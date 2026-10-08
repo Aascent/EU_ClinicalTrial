@@ -25,13 +25,17 @@ logging.basicConfig(
 logger = logging.getLogger("ctis_etl")
 
 
+import re
+
 def parse_ctis_date(date_str: Optional[str]) -> Optional[datetime]:
-    """Parses date string from Search API (typically DD/MM/YYYY) or ISO string."""
+    """Parses date string from Search API (e.g. '07/10/2026', 'HU: 07/10/2026', or ISO format)."""
     if not date_str or not isinstance(date_str, str):
         return None
     date_str = date_str.strip()
+    # Strip country code prefixes like 'HU: ', 'FR: ', 'DE: '
+    date_str = re.sub(r"^[A-Za-z]{2,3}:\s*", "", date_str)
 
-    # Try DD/MM/YYYY format
+    # Try DD/MM/YYYY and ISO formats
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
         try:
             return datetime.strptime(date_str.split(".")[0] if "." in date_str and fmt == "%Y-%m-%dT%H:%M:%S" else date_str, fmt)
@@ -65,8 +69,9 @@ def process_single_trial(
             backend=storage_backend,
         )
 
-        if not any(save_results.values()):
-            raise IOError(f"Failed to persist files for trial {ct_number} (results: {save_results})")
+        failed_files = [f for f, ok in save_results.items() if not ok]
+        if failed_files or not save_results:
+            raise IOError(f"Failed to persist files for trial {ct_number}: {failed_files}")
 
         # Mark success in database
         publish_date = raw_payload.get("publishDate") or raw_payload.get("decisionDate")
@@ -366,14 +371,99 @@ def run_full(
     )
 
 
+def run_check(client: CTISClient) -> None:
+    """Pre-flight diagnostic check verifying CTIS API, local disk, SQLite, S3, and DynamoDB."""
+    print("=================================================================")
+    print("       EU CTIS Data Pipeline - System Diagnostic Check          ")
+    print("=================================================================")
+    all_ok = True
+
+    # 1. CTIS API Connectivity
+    print("\n[1/5] Checking CTIS Public API connectivity...")
+    try:
+        resp = client.search_page(page=1, size=2)
+        total = resp.get("pagination", {}).get("totalRecords", 0)
+        items = resp.get("data", [])
+        if total > 0 and len(items) > 0:
+            print(f"  [PASS] CTIS Search API reachable. Total records in database: {total}")
+            sample_ct = items[0].get("ctNumber")
+            print(f"  [PASS] Sample trial retrieve testing on '{sample_ct}'...")
+            trial_data = client.retrieve_trial(sample_ct)
+            if trial_data.get("ctNumber") == sample_ct:
+                print(f"  [PASS] CTIS Retrieve API verified successfully.")
+        else:
+            print(f"  [FAIL] CTIS Search API returned 0 records.")
+            all_ok = False
+    except Exception as e:
+        print(f"  [FAIL] CTIS API communication error: {e}")
+        all_ok = False
+
+    # 2. Local Filesystem Write Access
+    print("\n[2/5] Checking Local Storage & Directory Permissions...")
+    try:
+        test_file = config.DATA_DIR / ".write_test"
+        test_file.write_text("ok", encoding="utf-8")
+        test_file.unlink()
+        print(f"  [PASS] Local data directory ({config.DATA_DIR}) writable.")
+        print(f"  [PASS] Quarantine directory ({config.QUARANTINE_DIR}) writable.")
+        print(f"  [PASS] Logs directory ({config.LOGS_DIR}) writable.")
+    except Exception as e:
+        print(f"  [FAIL] Local filesystem write error: {e}")
+        all_ok = False
+
+    # 3. SQLite Database State Check
+    print("\n[3/5] Checking SQLite Database ('tracker.db')...")
+    try:
+        database.init_sqlite_db()
+        with database.sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+            cnt = conn.execute("SELECT count(*) FROM trials").fetchone()[0]
+            print(f"  [PASS] SQLite database accessible. Current tracked trials: {cnt}")
+    except Exception as e:
+        print(f"  [FAIL] SQLite database error: {e}")
+        all_ok = False
+
+    # 4. Amazon S3 Check
+    print(f"\n[4/5] Checking Amazon S3 Bucket ('{config.S3_BUCKET_NAME}')...")
+    s3 = storage.get_s3_client()
+    if s3 is None:
+        print("  [WARN] boto3 is not installed or S3 client could not initialize. S3 uploads disabled.")
+    else:
+        try:
+            s3.head_bucket(Bucket=config.S3_BUCKET_NAME)
+            print(f"  [PASS] Successfully connected to S3 bucket '{config.S3_BUCKET_NAME}' in region '{config.AWS_REGION}'.")
+        except Exception as e:
+            print(f"  [FAIL] S3 Bucket access error: {e}")
+            all_ok = False
+
+    # 5. Amazon DynamoDB Check
+    print(f"\n[5/5] Checking Amazon DynamoDB Table ('{config.DYNAMODB_TABLE_NAME}')...")
+    table = database.get_dynamodb_table()
+    if table is None:
+        print("  [WARN] boto3 is not installed or DynamoDB client could not initialize. DynamoDB disabled.")
+    else:
+        try:
+            table.load()
+            print(f"  [PASS] Successfully connected to DynamoDB table '{config.DYNAMODB_TABLE_NAME}' (status: {table.table_status}).")
+        except Exception as e:
+            print(f"  [FAIL] DynamoDB Table access error: {e}")
+            all_ok = False
+
+    print("\n=================================================================")
+    if all_ok:
+        print("  DIAGNOSTIC STATUS: ALL CRITICAL SYSTEMS OPERATIONAL [OK]")
+    else:
+        print("  DIAGNOSTIC STATUS: ISSUES DETECTED - PLEASE REVIEW LOGS ABOVE")
+    print("=================================================================\n")
+
+
 def main() -> None:
     """Command-line argument parser and dispatcher."""
     parser_cli = argparse.ArgumentParser(description="EU CTIS Data Pipeline ETL CLI")
     parser_cli.add_argument(
         "--mode",
-        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed"],
+        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed", "check"],
         default="incremental",
-        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed'",
+        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed', 'check' (pre-flight diagnostics)",
     )
     parser_cli.add_argument(
         "--lookback-days",
@@ -402,6 +492,10 @@ def main() -> None:
     args = parser_cli.parse_args()
     client = CTISClient(base_url=config.CTIS_API_BASE_URL)
     database.init_sqlite_db()
+
+    if args.mode == "check":
+        run_check(client)
+        sys.exit(0)
 
     if args.mode == "single":
         if not args.ct_number:

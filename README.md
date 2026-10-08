@@ -122,6 +122,7 @@ The pipeline provides 3 dedicated processes along with utility commands to manag
 | **Combined Incremental Sync** | `python -m ctis_etl.main --mode incremental --lookback-days 7` | Runs both Process 2 (New) and Process 3 (Updates) in a single pass. |
 | **Single Trial Ingestion** | `python -m ctis_etl.main --mode single --ct-number <ID>` | Ingests a single specified trial dossier immediately. |
 | **Retry Failed Trials** | `python -m ctis_etl.main --mode retry-failed` | Re-queues and retries trials previously flagged with `FAILED` status. |
+| **Diagnostic Pre-flight Check** | `python -m ctis_etl.main --mode check` | Validates CTIS API, S3 bucket, DynamoDB, SQLite, and local disk permissions. |
 
 ---
 
