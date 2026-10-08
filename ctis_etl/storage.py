@@ -116,12 +116,8 @@ def save_trial_files(
 
         # 2. Silver Tier (6 domain JSON files)
         for filename, payload in parsed_files.items():
-            # Standard silver directory
             silver_path = config.SILVER_DIR / ct_number / filename
             results[f"local:silver:{filename}"] = _write_local_json(silver_path, payload)
-            # Direct directory for convenience / backward compatibility
-            direct_path = config.DATA_DIR / ct_number / filename
-            _write_local_json(direct_path, payload)
 
     # AWS S3 Persistence
     if save_s3:
@@ -156,15 +152,6 @@ def save_trial_files(
                     s3,
                     config.S3_BUCKET_NAME,
                     silver_key,
-                    payload,
-                    {"ct-number": ct_number, "filename": filename, "ingested-at": now_iso},
-                )
-                # Direct root prefix upload
-                legacy_key = f"{config.S3_PREFIX}{ct_number}/{filename}"
-                _upload_s3_json(
-                    s3,
-                    config.S3_BUCKET_NAME,
-                    legacy_key,
                     payload,
                     {"ct-number": ct_number, "filename": filename, "ingested-at": now_iso},
                 )
