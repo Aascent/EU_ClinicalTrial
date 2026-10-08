@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  ctis-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eu_ctis_etl_pipeline
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Run historical collection upon startup, while cron runs new and update checks
+      - RUN_ON_STARTUP=true
+      - STARTUP_MODE=historical
+      # Cron schedule (Default: Daily at 02:00 AM UTC). Change e.g. to "0 */12 * * *" for every 12 hours
+      - CRON_SCHEDULE=0 2 * * *
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persistent local volumes for output files, state database, and logs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./quarantine:/app/quarantine
+      - ./tracker.db:/app/tracker.db

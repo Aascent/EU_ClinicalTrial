@@ -93,15 +93,22 @@ def run_incremental(
     started_at = datetime.now(timezone.utc).isoformat()
     database.record_pipeline_run(run_id, "INCREMENTAL", started_at, status="RUNNING")
 
+def discover_and_stage_recent(
+    client: CTISClient,
+    lookback_days: int = 7,
+) -> int:
+    """Discovers recent trials within lookback window and stages them in database.
+
+    Returns total count of discovered trials.
+    """
     cutoff_date = datetime.now() - timedelta(days=lookback_days)
-    logger.info(f"Starting incremental sync with {lookback_days}-day lookback (cutoff: {cutoff_date.strftime('%Y-%m-%d')})")
+    logger.info(f"Scanning Search API for trials within last {lookback_days} days (cutoff: {cutoff_date.strftime('%Y-%m-%d')})...")
 
     discovered = 0
     current_page = 1
     hit_cutoff = False
 
     while not hit_cutoff:
-        logger.info(f"Querying Search API page {current_page}...")
         search_resp = client.search_page(page=current_page, size=100, sort_property="decisionDate", sort_direction="DESC")
         items = search_resp.get("data", [])
         if not items:
@@ -113,12 +120,10 @@ def run_incremental(
             if not ct_number:
                 continue
 
-            # Check dates against lookback cutoff
             raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
             dt = parse_ctis_date(raw_date)
 
             if dt and dt < cutoff_date:
-                logger.info(f"Reached record {ct_number} with date {raw_date} prior to cutoff {cutoff_date}. Halting pagination.")
                 hit_cutoff = True
                 break
 
@@ -129,30 +134,117 @@ def run_incremental(
             break
         current_page += 1
 
-    # Process all staged trials
-    pending_queue = database.get_pending_trials()
-    logger.info(f"Queue size for ingestion: {len(pending_queue)} trials")
+    return discovered
 
+
+def _process_trial_queue(
+    client: CTISClient,
+    queue: List[str],
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> tuple[int, int]:
+    """Helper to process a list of trials with ThreadPoolExecutor. Returns (succeeded, failed)."""
     succeeded = 0
     failed = 0
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
             executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
-            for ct_num in pending_queue
+            for ct_num in queue
         }
         for future in concurrent.futures.as_completed(future_map):
             ct_num = future_map[future]
             try:
-                ok = future.result()
-                if ok:
+                if future.result():
                     succeeded += 1
                 else:
                     failed += 1
             except Exception as e:
                 failed += 1
                 logger.error(f"Task failure for {ct_num}: {e}")
+    return succeeded, failed
 
+
+def run_new_trials(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Process 2: Checks CTIS for brand new trials published recently and ingests them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(run_id, "NEW_TRIALS", started_at, status="RUNNING")
+
+    logger.info(">>> [PROCESS 2] Checking for brand NEW clinical trials...")
+    discovered = discover_and_stage_recent(client, lookback_days)
+    new_queue = database.get_pending_trials(filter_type="new")
+    logger.info(f"Discovered {len(new_queue)} brand NEW trials ready for ingestion.")
+
+    succeeded, failed = _process_trial_queue(client, new_queue, max_workers, storage_backend)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(
+        run_id=run_id,
+        run_type="NEW_TRIALS",
+        started_at=started_at,
+        completed_at=completed_at,
+        status="COMPLETED",
+        discovered=discovered,
+        processed=len(new_queue),
+        succeeded=succeeded,
+        failed=failed,
+    )
+    logger.info(f"[PROCESS 2 COMPLETED] New trials processed: {len(new_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+
+
+def run_updated_trials(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Process 3: Checks CTIS for updates or amendments to existing trials and updates them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(run_id, "UPDATED_TRIALS", started_at, status="RUNNING")
+
+    logger.info(">>> [PROCESS 3] Checking for UPDATES / AMENDMENTS to existing trials...")
+    discovered = discover_and_stage_recent(client, lookback_days)
+    updates_queue = database.get_pending_trials(filter_type="updates")
+    logger.info(f"Discovered {len(updates_queue)} UPDATED trials ready for re-ingestion.")
+
+    succeeded, failed = _process_trial_queue(client, updates_queue, max_workers, storage_backend)
+    completed_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(
+        run_id=run_id,
+        run_type="UPDATED_TRIALS",
+        started_at=started_at,
+        completed_at=completed_at,
+        status="COMPLETED",
+        discovered=discovered,
+        processed=len(updates_queue),
+        succeeded=succeeded,
+        failed=failed,
+    )
+    logger.info(f"[PROCESS 3 COMPLETED] Updated trials processed: {len(updates_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+
+
+def run_incremental(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Discovers both new and updated trials within lookback window and synchronizes them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(run_id, "INCREMENTAL", started_at, status="RUNNING")
+
+    logger.info(f"Starting combined incremental sync (new + updates) with {lookback_days}-day lookback...")
+    discovered = discover_and_stage_recent(client, lookback_days)
+    pending_queue = database.get_pending_trials()
+    logger.info(f"Queue size for ingestion (new + updates): {len(pending_queue)} trials")
+
+    succeeded, failed = _process_trial_queue(client, pending_queue, max_workers, storage_backend)
     completed_at = datetime.now(timezone.utc).isoformat()
     database.record_pipeline_run(
         run_id=run_id,
@@ -178,37 +270,82 @@ def run_full(
     started_at = datetime.now(timezone.utc).isoformat()
     database.record_pipeline_run(run_id, "FULL", started_at, status="RUNNING")
 
-    logger.info("Starting FULL historical catalog discovery...")
-    discovered = 0
+    logger.info("Starting FULL historical catalog ingestion (processing page-by-page)...")
+    total_discovered = 0
+    total_processed = 0
+    total_succeeded = 0
+    total_failed = 0
+    total_skipped = 0
 
-    for item in client.iterate_search_trials(page_size=100, sort_property="decisionDate"):
-        discovered += 1
-        ct_number = item.get("ctNumber")
-        if ct_number:
-            raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall")
-            database.stage_trial(ct_number, raw_date)
+    current_page = 1
+    page_size = 100
 
-    pending_queue = database.get_pending_trials()
-    logger.info(f"Full discovery found {discovered} total records. Ingestion queue: {len(pending_queue)} trials")
+    while True:
+        logger.info(f"[Catalog Discovery] Fetching Search API page {current_page} (size={page_size})...")
+        try:
+            resp = client.search_page(page=current_page, size=page_size, sort_property="decisionDate", sort_direction="DESC")
+        except Exception as e:
+            logger.error(f"Error fetching search page {current_page}: {e}. Retrying page after 5s...")
+            import time
+            time.sleep(5)
+            continue
 
-    succeeded = 0
-    failed = 0
+        items = resp.get("data", [])
+        pagination = resp.get("pagination", {})
+        total_pages = pagination.get("totalPages", current_page)
+        total_records = pagination.get("totalRecords", total_discovered)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = {
-            executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
-            for ct_num in pending_queue
-        }
-        for future in concurrent.futures.as_completed(future_map):
-            ct_num = future_map[future]
-            try:
-                if future.result():
-                    succeeded += 1
-                else:
-                    failed += 1
-            except Exception as e:
-                failed += 1
-                logger.error(f"Task failure for {ct_num}: {e}")
+        if not items:
+            break
+
+        # Stage items for this page
+        page_pending = []
+        for item in items:
+            total_discovered += 1
+            ct_number = item.get("ctNumber")
+            if not ct_number:
+                continue
+            raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
+            state = database.stage_trial(ct_number, raw_date)
+            if state in ("PENDING", "UPDATE_PENDING"):
+                page_pending.append(ct_number)
+            else:
+                total_skipped += 1
+
+        # Process any pending trials for this batch
+        if page_pending:
+            logger.info(
+                f"[Page {current_page}/{total_pages}] Ingesting {len(page_pending)} trials "
+                f"({len(items) - len(page_pending)} already up to date)..."
+            )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_map = {
+                    executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
+                    for ct_num in page_pending
+                }
+                for future in concurrent.futures.as_completed(future_map):
+                    ct_num = future_map[future]
+                    total_processed += 1
+                    try:
+                        if future.result():
+                            total_succeeded += 1
+                        else:
+                            total_failed += 1
+                    except Exception as e:
+                        total_failed += 1
+                        logger.error(f"Failure processing {ct_num}: {e}")
+        else:
+            logger.info(f"[Page {current_page}/{total_pages}] All {len(items)} trials already up to date. Skipping batch.")
+
+        logger.info(
+            f"Progress: Page {current_page}/{total_pages} | "
+            f"Discovered: {total_discovered}/{total_records} | Succeeded: {total_succeeded} | "
+            f"Skipped: {total_skipped} | Failed: {total_failed}"
+        )
+
+        if current_page >= total_pages:
+            break
+        current_page += 1
 
     completed_at = datetime.now(timezone.utc).isoformat()
     database.record_pipeline_run(
@@ -217,12 +354,16 @@ def run_full(
         started_at=started_at,
         completed_at=completed_at,
         status="COMPLETED",
-        discovered=discovered,
-        processed=len(pending_queue),
-        succeeded=succeeded,
-        failed=failed,
+        discovered=total_discovered,
+        processed=total_processed,
+        succeeded=total_succeeded,
+        failed=total_failed,
     )
-    logger.info(f"Full catalog sync finished. Discovered: {discovered}, Processed: {len(pending_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    logger.info(
+        f"FULL catalog ingestion finished! Total Discovered: {total_discovered}, "
+        f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
+        f"Skipped: {total_skipped}, Failed: {total_failed}"
+    )
 
 
 def main() -> None:
@@ -230,15 +371,15 @@ def main() -> None:
     parser_cli = argparse.ArgumentParser(description="EU CTIS Data Pipeline ETL CLI")
     parser_cli.add_argument(
         "--mode",
-        choices=["incremental", "full", "single", "retry-failed"],
+        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed"],
         default="incremental",
-        help="Pipeline execution mode (default: incremental)",
+        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed'",
     )
     parser_cli.add_argument(
         "--lookback-days",
         type=int,
         default=config.LOOKBACK_DAYS,
-        help="Lookback window in days for incremental sync (default: 7)",
+        help="Lookback window in days for new/updates/incremental sync (default: 7)",
     )
     parser_cli.add_argument(
         "--ct-number",
@@ -269,17 +410,33 @@ def main() -> None:
         ok = process_single_trial(client, args.ct_number, storage_backend=args.storage)
         sys.exit(0 if ok else 1)
 
-    elif args.mode == "incremental":
-        run_incremental(
+    elif args.mode in ("historical", "full"):
+        run_full(
+            client=client,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "new":
+        run_new_trials(
             client=client,
             lookback_days=args.lookback_days,
             max_workers=args.workers,
             storage_backend=args.storage,
         )
 
-    elif args.mode == "full":
-        run_full(
+    elif args.mode == "updates":
+        run_updated_trials(
             client=client,
+            lookback_days=args.lookback_days,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "incremental":
+        run_incremental(
+            client=client,
+            lookback_days=args.lookback_days,
             max_workers=args.workers,
             storage_backend=args.storage,
         )

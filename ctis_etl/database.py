@@ -42,6 +42,8 @@ def get_dynamodb_table():
 def init_sqlite_db() -> None:
     """Creates SQLite tracking tables and indexes if they do not exist."""
     with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=15000;")
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS trials (
@@ -219,18 +221,39 @@ def mark_failure(ct_number: str, error_message: str) -> None:
                 logger.error(f"DynamoDB failure update failed for {ct_number}: {e}")
 
 
-def get_pending_trials() -> List[str]:
-    """Retrieves list of ct_numbers ready for processing."""
+def get_pending_trials(filter_type: Optional[str] = None) -> List[str]:
+    """Retrieves list of ct_numbers ready for processing.
+
+    Args:
+        filter_type: 'new' (only PENDING), 'updates' (only UPDATE_PENDING), or None (both)
+    """
     init_sqlite_db()
     with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT ct_number FROM trials
-            WHERE status IN ('PENDING', 'UPDATE_PENDING')
-            ORDER BY retry_count ASC, updated_at ASC
-            """
-        )
+        if filter_type == "new":
+            cursor.execute(
+                """
+                SELECT ct_number FROM trials
+                WHERE status = 'PENDING'
+                ORDER BY retry_count ASC, updated_at ASC
+                """
+            )
+        elif filter_type in ("update", "updates"):
+            cursor.execute(
+                """
+                SELECT ct_number FROM trials
+                WHERE status = 'UPDATE_PENDING'
+                ORDER BY retry_count ASC, updated_at ASC
+                """
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT ct_number FROM trials
+                WHERE status IN ('PENDING', 'UPDATE_PENDING')
+                ORDER BY retry_count ASC, updated_at ASC
+                """
+            )
         return [row[0] for row in cursor.fetchall()]
 
 

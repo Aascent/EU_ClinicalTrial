@@ -108,48 +108,139 @@ STATE_BACKEND=dynamodb
 
 ---
 
-## 4. CLI Execution Modes
+## 4. CLI Execution Commands & Processing Modes
 
-Run the pipeline using `python -m ctis_etl.main`:
+The pipeline provides 3 dedicated processes along with utility commands to manage extraction, incremental sync, and backfilling.
 
-### Incremental Daily Sync (Default)
-Discovers trials published or amended within the last 7 days and syncs only new or modified dossiers:
+### 4.1 CLI Commands Quick Reference Table
 
+| Objective | Command | Description |
+| :--- | :--- | :--- |
+| **Process 1: Historical Backfill** | `python -m ctis_etl.main --mode historical` | Ingests all ~12,500+ trials page-by-page, skipping previously saved trials. |
+| **Process 2: Brand New Trials** | `python -m ctis_etl.main --mode new --lookback-days 7` | Checks recently published trials and ingests only ones not yet in the DB. |
+| **Process 3: Updates & Amendments** | `python -m ctis_etl.main --mode updates --lookback-days 7` | Detects modified/amended trials and updates their dossiers in S3 & DynamoDB. |
+| **Combined Incremental Sync** | `python -m ctis_etl.main --mode incremental --lookback-days 7` | Runs both Process 2 (New) and Process 3 (Updates) in a single pass. |
+| **Single Trial Ingestion** | `python -m ctis_etl.main --mode single --ct-number <ID>` | Ingests a single specified trial dossier immediately. |
+| **Retry Failed Trials** | `python -m ctis_etl.main --mode retry-failed` | Re-queues and retries trials previously flagged with `FAILED` status. |
+
+---
+
+### 4.2 Detailed Command Examples
+
+#### Process 1: Historical Data Collector (Full Backfill)
+Streams through the complete CTIS database (~12,500+ trials) page by page with checkpointing:
 ```bash
-python -m ctis_etl.main --mode incremental --lookback-days 7
+# Standard backfill (5 worker threads, saves to S3 and DynamoDB from .env)
+python -m ctis_etl.main --mode historical --workers 5
+
+# Local-only backfill (saves directly into ./data/ without cloud upload)
+python -m ctis_etl.main --mode historical --workers 5 --storage local
 ```
 
-### Single Trial Ingestion
-Extracts, transforms, and stores a specific trial by its CT number:
-
+#### Process 2: Brand New Trials Ingestion
+Scans recent trials and ingests strictly new ones:
 ```bash
+# Ingest new trials added in the last 7 days
+python -m ctis_etl.main --mode new --lookback-days 7
+
+# Ingest new trials added in the last 30 days
+python -m ctis_etl.main --mode new --lookback-days 30
+```
+
+#### Process 3: Trial Updates & Amendments
+Scans recently updated trials and synchronizes dossiers that changed on the CTIS portal:
+```bash
+# Check and update amended trials from the last 7 days
+python -m ctis_etl.main --mode updates --lookback-days 7
+```
+
+#### Combined Incremental Sync
+Runs both Process 2 (New) and Process 3 (Updates) sequentially:
+```bash
+python -m ctis_etl.main --mode incremental --lookback-days 7 --workers 5
+```
+
+#### Single Trial Extraction (Testing & Ad-hoc)
+```bash
+# Extract trial 2026-527084-15-00 to S3 and DynamoDB
 python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00
-```
 
-### Full Catalog Backfill
-Paginates through the entire CTIS public database (~12,500+ trials):
-
-```bash
-python -m ctis_etl.main --mode full --workers 5
-```
-
-### Retry Failed Trials
-Re-queues and retries trials previously marked as `FAILED`:
-
-```bash
-python -m ctis_etl.main --mode retry-failed
-```
-
-### Local Storage Override
-Save outputs locally regardless of `.env`:
-
-```bash
+# Extract trial to local ./data/ folder only
 python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00 --storage local
+```
+
+#### Re-run Previously Failed Trials
+```bash
+python -m ctis_etl.main --mode retry-failed --workers 5
 ```
 
 ---
 
-## 5. Quality Controls & Resilience
+### 4.3 CLI Options & Flags Reference
+
+| Option | Values | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--mode` | `historical`, `new`, `updates`, `incremental`, `single`, `retry-failed` | `incremental` | Pipeline execution mode. |
+| `--lookback-days` | Integer (e.g. `1`, `7`, `30`) | `7` | Days to look back on Search API for new/updated trials. |
+| `--ct-number` | String (e.g. `2026-527084-15-00`) | None | Required when `--mode single` is specified. |
+| `--workers` | Integer (e.g. `1` to `10`) | `5` | Concurrent worker threads for download & parsing. |
+| `--storage` | `s3`, `local`, `both` | from `.env` | Override destination storage backend. |
+
+---
+
+### 4.4 Running CLI Commands inside Docker
+
+If running via Docker Compose, you can trigger any of the CLI commands on-demand without stopping background jobs:
+
+```bash
+# Run historical backfill in the running container
+docker compose exec ctis-etl python -m ctis_etl.main --mode historical
+
+# Run new trial check
+docker compose exec ctis-etl python -m ctis_etl.main --mode new --lookback-days 7
+
+# Run updates check
+docker compose exec ctis-etl python -m ctis_etl.main --mode updates --lookback-days 7
+
+# Ingest a single trial
+docker compose exec ctis-etl python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00
+```
+
+---
+
+## 5. Docker Deployment & Automated Scheduling
+
+The Docker container runs all 3 processes together:
+1. **Background Cron Daemon:** Runs on boot to execute scheduled checks:
+   * **Every 6 hours:** Runs **Process 2** (`--mode new`) to detect and ingest new trials.
+   * **Daily at 02:00 AM UTC:** Runs **Process 3** (`--mode updates`) to check for amendments and update existing trials.
+2. **Startup Historical Backfill:** Automatically runs **Process 1** (`--mode historical`) on container start to continuously ingest all historical trials in the background.
+
+### 5.1 Quick Start with Docker Compose
+
+Ensure your `.env` contains your AWS credentials and settings, then launch:
+
+```bash
+# Build and start container in detached mode
+docker compose up -d
+
+# View live streaming logs
+docker compose logs -f
+```
+
+### 5.2 Customizing Cron Schedule & Startup Behavior
+
+In `docker-compose.yml` or via `.env`, configure:
+
+* `CRON_SCHEDULE`: Standard cron expression. Examples:
+  * `0 2 * * *` — Daily at 02:00 UTC (default)
+  * `0 */12 * * *` — Every 12 hours
+  * `0 0 * * *` — Midnight daily
+* `RUN_ON_STARTUP`: `true` to immediately trigger extraction when container boots.
+
+---
+
+## 6. Quality Controls & Resilience
 
 * **Rate Limiting & Backoff:** Uses `ThreadPoolExecutor` capped at 5 workers with exponential backoff and jitter on HTTP 429 and 5xx responses.
 * **Non-existent Trial Detection:** Detects `200 OK` empty JSON payloads (`{}`) and marks them accordingly.
@@ -158,13 +249,18 @@ python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00 --storage lo
 
 ---
 
-## 6. Directory Structure
+## 7. Directory Structure
 
 ```text
 eu_clinical_trial/
 ├── .env                              # Environment configuration & AWS credentials (git-ignored)
 ├── .env.example                      # Sanitized configuration template
 ├── .gitignore                        # Git ignore patterns
+├── .dockerignore                     # Docker build exclusion rules
+├── Dockerfile                        # Multi-stage production container with cron
+├── docker-compose.yml                # Container orchestration & volume mapping
+├── entrypoint.sh                     # Container startup & cron daemon script
+├── crontab                           # Crontab schedule configuration
 ├── README.md                         # Documentation
 ├── requirements.txt                  # Python package dependencies
 ├── tracker.db                        # SQLite state database (created automatically)
