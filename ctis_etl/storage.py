@@ -199,17 +199,27 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     target_json_url = json_url or "pipeline_status.json"
     json_pretty_str = json.dumps(report, indent=2, ensure_ascii=False)
 
+    def _fmt_ts(val: Optional[str]) -> str:
+        if not val:
+            return "-"
+        clean = val.replace("T", " ")
+        if "." in clean:
+            clean = clean.split(".")[0]
+        if "+00:00" in clean:
+            clean = clean.replace("+00:00", " UTC")
+        return clean
+
     runs_by_type_rows = ""
     for rtype, rdata in runs_by_type.items():
         runs_by_type_rows += f"""
         <tr>
-            <td><strong>{rtype}</strong></td>
-            <td>{rdata.get('total_runs', 0)}</td>
-            <td>{rdata.get('trials_discovered', 0)}</td>
-            <td>{rdata.get('trials_processed', 0)}</td>
-            <td style="color: #10b981; font-weight: 600;">{rdata.get('trials_succeeded', 0)}</td>
-            <td style="color: {'#ef4444' if rdata.get('trials_failed', 0) > 0 else '#64748b'};">{rdata.get('trials_failed', 0)}</td>
-            <td style="font-size: 0.85em; color: #64748b;">{rdata.get('last_run_at', '-')}</td>
+            <td><strong style="color: #ffffff; font-size: 0.95rem;">{rtype}</strong></td>
+            <td style="color: #f8fafc; font-weight: 600;">{rdata.get('total_runs', 0)}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{rdata.get('trials_discovered', 0)}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{rdata.get('trials_processed', 0)}</td>
+            <td style="color: #34d399; font-weight: 700; font-size: 1rem;">{rdata.get('trials_succeeded', 0)}</td>
+            <td style="color: {'#f87171' if rdata.get('trials_failed', 0) > 0 else '#94a3b8'}; font-weight: 700;">{rdata.get('trials_failed', 0)}</td>
+            <td style="font-size: 0.88rem; color: #cbd5e1; font-family: Consolas, monospace;">{_fmt_ts(rdata.get('last_run_at'))}</td>
         </tr>
         """
 
@@ -217,13 +227,13 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     for row in daily_activity:
         daily_rows += f"""
         <tr>
-            <td>{row.get('date')}</td>
+            <td style="color: #ffffff; font-weight: 600; font-size: 0.9rem;">{row.get('date')}</td>
             <td><span class="badge badge-info">{row.get('run_type')}</span></td>
-            <td>{row.get('runs_count')}</td>
-            <td>{row.get('trials_discovered')}</td>
-            <td>{row.get('trials_processed')}</td>
-            <td style="color: #10b981; font-weight: 600;">{row.get('trials_succeeded')}</td>
-            <td style="color: {'#ef4444' if row.get('trials_failed', 0) > 0 else '#64748b'};">{row.get('trials_failed')}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{row.get('runs_count')}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{row.get('trials_discovered')}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{row.get('trials_processed')}</td>
+            <td style="color: #34d399; font-weight: 700;">{row.get('trials_succeeded')}</td>
+            <td style="color: {'#f87171' if row.get('trials_failed', 0) > 0 else '#94a3b8'};">{row.get('trials_failed')}</td>
         </tr>
         """
 
@@ -233,15 +243,15 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
         st_badge = "badge-success" if st == "COMPLETED" else ("badge-warning" if st == "RUNNING" else "badge-danger")
         recent_runs_rows += f"""
         <tr>
-            <td style="font-family: monospace; font-size: 0.85em;">{run.get('run_id', '')[:8]}...</td>
-            <td><strong>{run.get('run_type')}</strong></td>
+            <td style="font-family: Consolas, monospace; font-size: 0.88rem; color: #38bdf8; font-weight: 600;">{run.get('run_id', '')[:8]}...</td>
+            <td><strong style="color: #ffffff;">{run.get('run_type')}</strong></td>
             <td><span class="badge {st_badge}">{st}</span></td>
-            <td>{run.get('trials_discovered', 0)}</td>
-            <td>{run.get('trials_processed', 0)}</td>
-            <td style="color: #10b981;">{run.get('trials_succeeded', 0)}</td>
-            <td style="color: {'#ef4444' if run.get('trials_failed', 0) > 0 else '#64748b'};">{run.get('trials_failed', 0)}</td>
-            <td style="font-size: 0.85em; color: #64748b;">{run.get('started_at', '-')}</td>
-            <td style="font-size: 0.85em; color: #64748b;">{run.get('completed_at', '-')}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{run.get('trials_discovered', 0)}</td>
+            <td style="color: #f8fafc; font-weight: 600;">{run.get('trials_processed', 0)}</td>
+            <td style="color: #34d399; font-weight: 700;">{run.get('trials_succeeded', 0)}</td>
+            <td style="color: {'#f87171' if run.get('trials_failed', 0) > 0 else '#94a3b8'};">{run.get('trials_failed', 0)}</td>
+            <td style="font-size: 0.85rem; color: #cbd5e1; font-family: Consolas, monospace;">{_fmt_ts(run.get('started_at'))}</td>
+            <td style="font-size: 0.85rem; color: #cbd5e1; font-family: Consolas, monospace;">{_fmt_ts(run.get('completed_at'))}</td>
         </tr>
         """
 
@@ -251,11 +261,11 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
         badge = "badge-success" if tst == "SUCCESS" else ("badge-warning" if "PENDING" in tst else "badge-danger")
         recent_trials_rows += f"""
         <tr>
-            <td style="font-family: monospace; font-weight: 600;">{tr.get('ct_number')}</td>
+            <td style="font-family: Consolas, monospace; font-weight: 700; color: #ffffff; font-size: 0.95rem; letter-spacing: 0.02em;">{tr.get('ct_number')}</td>
             <td><span class="badge {badge}">{tst}</span></td>
-            <td style="font-size: 0.85em; color: #475569;">{tr.get('last_publish_date', '-')}</td>
-            <td style="font-size: 0.85em; color: #475569;">{tr.get('last_fetched_at', '-')}</td>
-            <td style="font-family: monospace; font-size: 0.8em; color: #0284c7;">{tr.get('s3_silver_prefix', '-')}</td>
+            <td style="font-size: 0.9rem; color: #e2e8f0; font-weight: 500; font-family: Consolas, monospace;">{_fmt_ts(tr.get('last_publish_date'))}</td>
+            <td style="font-size: 0.9rem; color: #e2e8f0; font-weight: 500; font-family: Consolas, monospace;">{_fmt_ts(tr.get('last_fetched_at'))}</td>
+            <td style="font-family: Consolas, monospace; font-size: 0.88rem; color: #38bdf8; font-weight: 600;">{tr.get('s3_silver_prefix', '-')}</td>
         </tr>
         """
 
@@ -267,16 +277,17 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     <title>EU CTIS Pipeline - Live Activity & Audit Dashboard</title>
     <style>
         :root {{
-            --bg: #0f172a;
+            --bg: #0b1120;
             --surface: #1e293b;
             --surface-hover: #334155;
             --border: #334155;
             --text-primary: #f8fafc;
-            --text-muted: #94a3b8;
+            --text-secondary: #e2e8f0;
+            --text-muted: #cbd5e1;
             --accent: #38bdf8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
@@ -286,7 +297,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             padding: 24px;
             line-height: 1.5;
         }}
-        .container {{ max-width: 1200px; margin: 0 auto; }}
+        .container {{ max-width: 1240px; margin: 0 auto; }}
         header {{
             display: flex;
             justify-content: space-between;
@@ -297,29 +308,24 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             border-bottom: 1px solid var(--border);
             margin-bottom: 24px;
         }}
-        h1 {{ font-size: 1.5rem; font-weight: 700; color: #fff; }}
-        .subtitle {{ font-size: 0.875rem; color: var(--text-muted); margin-top: 4px; }}
+        h1 {{ font-size: 1.6rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; }}
+        .subtitle {{ font-size: 0.9rem; color: var(--text-muted); margin-top: 4px; }}
         .meta-actions {{ display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }}
         .btn {{
             display: inline-flex;
             align-items: center;
-            padding: 8px 16px;
+            padding: 9px 18px;
             border-radius: 6px;
             background: var(--accent);
-            color: #0f172a;
-            font-weight: 600;
-            font-size: 0.875rem;
+            color: #0b1120;
+            font-weight: 700;
+            font-size: 0.88rem;
             text-decoration: none;
-            transition: opacity 0.2s;
+            transition: transform 0.15s, opacity 0.2s;
             cursor: pointer;
             border: none;
         }}
-        .btn:hover {{ opacity: 0.9; }}
-        .btn-outline {{
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
-            border: 1px solid var(--border);
-        }}
+        .btn:hover {{ opacity: 0.92; transform: translateY(-1px); }}
         .grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -331,53 +337,83 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }}
-        .card-label {{ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }}
-        .card-value {{ font-size: 2rem; font-weight: 700; margin-top: 8px; color: #fff; }}
-        .card-desc {{ font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }}
-        .section-title {{ font-size: 1.15rem; font-weight: 600; margin: 32px 0 16px 0; color: var(--accent); }}
+        .card-label {{ font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; font-weight: 600; }}
+        .card-value {{ font-size: 2.2rem; font-weight: 800; margin-top: 8px; color: #ffffff; }}
+        .card-desc {{ font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }}
+        .section-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 36px 0 16px 0;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .section-title {{ font-size: 1.2rem; font-weight: 700; color: #38bdf8; letter-spacing: -0.01em; margin: 0; }}
+        .search-input {{
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #ffffff;
+            padding: 9px 16px;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            width: 320px;
+            outline: none;
+            transition: border-color 0.2s;
+        }}
+        .search-input:focus {{ border-color: var(--accent); }}
+        .search-input::placeholder {{ color: #64748b; }}
         .table-container {{
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 10px;
             overflow-x: auto;
             margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }}
         table {{
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
         }}
         th, td {{
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
+            padding: 14px 18px;
+            border-bottom: 1px solid #334155;
         }}
         th {{
-            background: rgba(15, 23, 42, 0.6);
-            color: var(--text-muted);
-            font-weight: 600;
+            background: #1e293b;
+            color: #93c5fd;
+            font-weight: 700;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
+            font-size: 0.78rem;
+            letter-spacing: 0.06em;
+            border-bottom: 2px solid #475569;
+        }}
+        tr:nth-child(even) td {{
+            background: rgba(255, 255, 255, 0.02);
+        }}
+        tr:hover td {{
+            background: rgba(56, 189, 248, 0.08);
         }}
         tr:last-child td {{ border-bottom: none; }}
-        tr:hover td {{ background: rgba(255, 255, 255, 0.02); }}
         .badge {{
             display: inline-block;
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
         }}
-        .badge-success {{ background: rgba(16, 185, 129, 0.15); color: #34d399; }}
-        .badge-warning {{ background: rgba(245, 158, 11, 0.15); color: #fbbf24; }}
-        .badge-danger {{ background: rgba(239, 68, 68, 0.15); color: #f87171; }}
-        .badge-info {{ background: rgba(56, 189, 248, 0.15); color: #38bdf8; }}
+        .badge-success {{ background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }}
+        .badge-warning {{ background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }}
+        .badge-danger {{ background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }}
+        .badge-info {{ background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }}
         footer {{
             text-align: center;
-            font-size: 0.8rem;
-            color: var(--text-muted);
+            font-size: 0.85rem;
+            color: #94a3b8;
             margin-top: 48px;
             padding-top: 24px;
             border-top: 1px solid var(--border);
@@ -420,7 +456,9 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             </div>
         </div>
 
-        <div class="section-title">Execution Totals by Run Mode (Historical / New / Updates)</div>
+        <div class="section-header">
+            <h2 class="section-title">Execution Totals by Run Mode (Historical / New / Updates)</h2>
+        </div>
         <div class="table-container">
             <table>
                 <thead>
@@ -440,7 +478,9 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             </table>
         </div>
 
-        <div class="section-title">Daily Activity & Sync Breakdown</div>
+        <div class="section-header">
+            <h2 class="section-title">Daily Activity & Sync Breakdown</h2>
+        </div>
         <div class="table-container">
             <table>
                 <thead>
@@ -460,7 +500,9 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             </table>
         </div>
 
-        <div class="section-title">Recent Pipeline Runs</div>
+        <div class="section-header">
+            <h2 class="section-title">Recent Pipeline Runs</h2>
+        </div>
         <div class="table-container">
             <table>
                 <thead>
@@ -482,16 +524,19 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             </table>
         </div>
 
-        <div class="section-title">Recently Synchronized Clinical Trials</div>
+        <div class="section-header">
+            <h2 class="section-title">Recently Synchronized Clinical Trials</h2>
+            <input type="text" id="trialSearch" class="search-input" placeholder="🔍 Search by CT Number or Date..." onkeyup="filterTrials()">
+        </div>
         <div class="table-container">
-            <table>
+            <table id="trialsTable">
                 <thead>
                     <tr>
                         <th>Trial CT Number</th>
                         <th>Status</th>
                         <th>EU Registry Publish Date</th>
                         <th>Last Fetched At</th>
-                        <th>S3 Silver Prefix</th>
+                        <th>S3 Silver Storage Prefix</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -500,16 +545,28 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             </table>
         </div>
 
-        <div class="section-title">Live JSON Payload Preview (Expandable)</div>
-        <details class="table-container" style="padding: 16px; background: #020617;">
-            <summary style="cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 12px;">Click to view full JSON payload preview</summary>
-            <pre style="background: transparent; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; color: #e2e8f0; font-family: Consolas, monospace;"><code>{json_pretty_str}</code></pre>
+        <div class="section-header">
+            <h2 class="section-title">Live JSON Payload Preview (Expandable)</h2>
+        </div>
+        <details class="table-container" style="padding: 18px; background: #020617;">
+            <summary style="cursor: pointer; font-weight: 700; color: var(--accent); margin-bottom: 12px; font-size: 0.95rem;">Click to view full JSON payload preview</summary>
+            <pre style="background: transparent; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.82rem; color: #f1f5f9; font-family: Consolas, monospace; line-height: 1.45;"><code>{json_pretty_str}</code></pre>
         </details>
 
         <footer>
             Report generated at {report.get('generated_at', 'UTC')} | S3: {env.get('s3_bucket')} | DynamoDB: {env.get('dynamodb_table')}
         </footer>
     </div>
+
+    <script>
+        function filterTrials() {{
+            var input = document.getElementById("trialSearch").value.toUpperCase();
+            var rows = document.querySelectorAll("#trialsTable tbody tr");
+            rows.forEach(function(r) {{
+                r.style.display = r.innerText.toUpperCase().indexOf(input) > -1 ? "" : "none";
+            }});
+        }}
+    </script>
 </body>
 </html>"""
     return html
