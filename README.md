@@ -298,6 +298,10 @@ eu_clinical_trial/
 ├── quarantine/                       # Malformed or failed payloads (created automatically)
 ├── logs/                             # Application logs (created automatically)
 ├── docs/
+│   ├── 01_ARCHITECTURE_AND_DESIGN.md
+│   ├── 02_API_SPECIFICATION_AND_QUIRKS.md
+│   ├── 03_DEPLOYMENT_AND_OPERATIONS_GUIDE.md
+│   ├── 04_RATE_LIMITING_AND_PERFORMANCE_ESTIMATIONS.md
 │   └── EU CTIS Data Pipeline - ETL Implementation Guide.md
 └── ctis_etl/
     ├── __init__.py
