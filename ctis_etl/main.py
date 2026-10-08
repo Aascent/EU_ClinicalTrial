@@ -35,20 +35,21 @@ except (ValueError, AttributeError):
     pass
 
 # Configure rotating file logging for production disk safety
-rotating_handler = RotatingFileHandler(
-    config.LOGS_DIR / "ctis_etl.log",
-    maxBytes=config.LOG_FILE_MAX_BYTES,
-    backupCount=config.LOG_BACKUP_COUNT,
-    encoding="utf-8",
-)
+_log_handlers: List[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+for _log_name in ("ctis_etl.log", "etl.log"):
+    _log_handlers.append(
+        RotatingFileHandler(
+            config.LOGS_DIR / _log_name,
+            maxBytes=config.LOG_FILE_MAX_BYTES,
+            backupCount=config.LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
+    )
 
 logging.basicConfig(
     level=getattr(logging, config.LOG_LEVEL, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        rotating_handler,
-    ],
+    handlers=_log_handlers,
 )
 logger = logging.getLogger("ctis_etl")
 
