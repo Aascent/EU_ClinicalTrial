@@ -19,3 +19,7 @@ globs: ctis_etl/**, docs/**, Dockerfile, entrypoint.sh, crontab
    - In SQLite, keep WAL mode enabled with `PRAGMA busy_timeout=15000` to prevent database locks.
    - Quarantine malformed or failed payloads into `./quarantine/{ctNumber}_{timestamp}.json` with error logs.
    - Keep `.env` strictly ignored by Git (`.gitignore`).
+
+4. **Medallion Architecture Consistency:**
+   - Always persist Bronze (`raw.json`), Silver (6 domain JSON files), and Gold (`trial_analytics.json`) across storage backends.
+

@@ -44,75 +44,149 @@ def get_s3_client():
         return None
 
 
+def _write_local_json(target_path: Path, payload: Any) -> bool:
+    """Helper to atomically write a JSON file and verify non-empty size."""
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = target_path.with_suffix(".tmp")
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        temp_path.replace(target_path)
+        return target_path.stat().st_size > 0
+    except Exception as e:
+        logger.error(f"Failed writing local file {target_path}: {e}")
+        return False
+
+
+def _upload_s3_json(
+    s3_client: Any,
+    bucket: str,
+    key: str,
+    payload: Any,
+    metadata: Dict[str, str],
+) -> bool:
+    """Helper to upload a JSON payload to S3 with encryption and metadata tags."""
+    try:
+        payload_bytes = json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
+        put_kwargs = {
+            "Bucket": bucket,
+            "Key": key,
+            "Body": payload_bytes,
+            "ContentType": "application/json",
+            "Metadata": metadata,
+        }
+        if config.S3_SERVER_SIDE_ENCRYPTION:
+            put_kwargs["ServerSideEncryption"] = config.S3_SERVER_SIDE_ENCRYPTION
+        s3_client.put_object(**put_kwargs)
+        return True
+    except Exception as e:
+        logger.error(f"Failed uploading to s3://{bucket}/{key}: {e}")
+        return False
+
+
 def save_trial_files(
     ct_number: str,
     parsed_files: Dict[str, Any],
+    raw_payload: Optional[Dict[str, Any]] = None,
+    gold_record: Optional[Dict[str, Any]] = None,
     backend: Optional[str] = None,
 ) -> Dict[str, bool]:
-    """Saves the 6 JSON files according to the chosen storage backend.
+    """Persists trial entities across the Medallion architecture (Bronze, Silver, Gold).
 
     Args:
         ct_number: Trial identifier (e.g. '2026-527084-15-00')
-        parsed_files: Dictionary of filename -> json-serializable payload
+        parsed_files: Silver tier dictionary of filename -> domain JSON payload (6 files)
+        raw_payload: Bronze tier unmodified API response payload
+        gold_record: Gold tier flattened, business-ready analytical summary
         backend: Storage backend ('local', 's3', or 'both'). Defaults to config.STORAGE_BACKEND.
 
     Returns:
-        Dict indicating success status for each file.
+        Dict indicating success status for each persisted entity across tiers.
     """
     backend = (backend or config.STORAGE_BACKEND).lower()
-    results = {}
+    results: Dict[str, bool] = {}
 
     save_local = backend in ("local", "both")
     save_s3 = backend in ("s3", "both")
 
-    # Local Directory Save
+    # Local Directory Persistence
     if save_local:
-        trial_dir = config.DATA_DIR / ct_number
-        trial_dir.mkdir(parents=True, exist_ok=True)
-        for filename, payload in parsed_files.items():
-            file_path = trial_dir / filename
-            try:
-                temp_path = file_path.with_suffix(".tmp")
-                with open(temp_path, "w", encoding="utf-8") as f:
-                    json.dump(payload, f, indent=2, ensure_ascii=False)
-                temp_path.replace(file_path)
-                results[f"local:{filename}"] = file_path.stat().st_size > 0
-            except Exception as e:
-                logger.error(f"Failed writing local file {file_path}: {e}")
-                results[f"local:{filename}"] = False
+        # 1. Bronze Tier (Raw response)
+        if raw_payload is not None:
+            bronze_path = config.BRONZE_DIR / ct_number / "raw.json"
+            results["local:bronze:raw.json"] = _write_local_json(bronze_path, raw_payload)
 
-    # AWS S3 Save
+        # 2. Silver Tier (6 domain JSON files)
+        for filename, payload in parsed_files.items():
+            # Standard silver directory
+            silver_path = config.SILVER_DIR / ct_number / filename
+            results[f"local:silver:{filename}"] = _write_local_json(silver_path, payload)
+            # Legacy/direct directory for backward compatibility
+            direct_path = config.DATA_DIR / ct_number / filename
+            _write_local_json(direct_path, payload)
+
+        # 3. Gold Tier (Business-ready analytical summary)
+        if gold_record is not None:
+            gold_path = config.GOLD_DIR / ct_number / "trial_analytics.json"
+            results["local:gold:trial_analytics.json"] = _write_local_json(gold_path, gold_record)
+
+    # AWS S3 Persistence
     if save_s3:
         s3 = get_s3_client()
         if s3 is None:
             logger.warning(f"S3 client unavailable. Falling back to local disk for {ct_number}.")
             if not save_local:
-                return save_trial_files(ct_number, parsed_files, backend="local")
+                return save_trial_files(
+                    ct_number=ct_number,
+                    parsed_files=parsed_files,
+                    raw_payload=raw_payload,
+                    gold_record=gold_record,
+                    backend="local",
+                )
         else:
             now_iso = datetime.now(timezone.utc).isoformat()
-            for filename, payload in parsed_files.items():
-                s3_key = f"{config.S3_PREFIX}{ct_number}/{filename}"
-                try:
-                    payload_bytes = json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
-                    put_kwargs = {
-                        "Bucket": config.S3_BUCKET_NAME,
-                        "Key": s3_key,
-                        "Body": payload_bytes,
-                        "ContentType": "application/json",
-                        "Metadata": {
-                            "ct-number": ct_number,
-                            "ingested-at": now_iso,
-                            "filename": filename,
-                        },
-                    }
-                    if config.S3_SERVER_SIDE_ENCRYPTION:
-                        put_kwargs["ServerSideEncryption"] = config.S3_SERVER_SIDE_ENCRYPTION
 
-                    s3.put_object(**put_kwargs)
-                    results[f"s3:{filename}"] = True
-                except Exception as e:
-                    logger.error(f"Failed uploading to s3://{config.S3_BUCKET_NAME}/{s3_key}: {e}")
-                    results[f"s3:{filename}"] = False
+            # 1. Bronze Tier Upload
+            if raw_payload is not None:
+                bronze_key = f"{config.S3_BRONZE_PREFIX}{ct_number}/raw.json"
+                results["s3:bronze:raw.json"] = _upload_s3_json(
+                    s3,
+                    config.S3_BUCKET_NAME,
+                    bronze_key,
+                    raw_payload,
+                    {"ct-number": ct_number, "layer": "bronze", "ingested-at": now_iso},
+                )
+
+            # 2. Silver Tier Uploads
+            for filename, payload in parsed_files.items():
+                silver_key = f"{config.S3_SILVER_PREFIX}{ct_number}/{filename}"
+                results[f"s3:silver:{filename}"] = _upload_s3_json(
+                    s3,
+                    config.S3_BUCKET_NAME,
+                    silver_key,
+                    payload,
+                    {"ct-number": ct_number, "layer": "silver", "filename": filename, "ingested-at": now_iso},
+                )
+                # Legacy root prefix upload
+                legacy_key = f"{config.S3_PREFIX}{ct_number}/{filename}"
+                _upload_s3_json(
+                    s3,
+                    config.S3_BUCKET_NAME,
+                    legacy_key,
+                    payload,
+                    {"ct-number": ct_number, "filename": filename, "ingested-at": now_iso},
+                )
+
+            # 3. Gold Tier Upload
+            if gold_record is not None:
+                gold_key = f"{config.S3_GOLD_PREFIX}{ct_number}/trial_analytics.json"
+                results["s3:gold:trial_analytics.json"] = _upload_s3_json(
+                    s3,
+                    config.S3_BUCKET_NAME,
+                    gold_key,
+                    gold_record,
+                    {"ct-number": ct_number, "layer": "gold", "ingested-at": now_iso},
+                )
 
     return results
 

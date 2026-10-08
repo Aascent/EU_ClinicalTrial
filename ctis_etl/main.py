@@ -90,13 +90,18 @@ def process_single_trial(
         if not raw_payload.get("ctNumber"):
             raise ValueError(f"Payload missing valid ctNumber: {ct_number}")
 
-        # Parse into 6 discrete files
-        parsed_files = parser.parse_trial_dossier(raw_payload)
+        # Parse into 6 discrete files (Silver Layer)
+        silver_files = parser.parse_trial_dossier(raw_payload)
 
-        # Save to S3 and/or local storage
+        # Generate business-ready analytical summary (Gold Layer)
+        gold_record = parser.generate_gold_analytics(raw_payload)
+
+        # Persist across Medallion storage tiers (Bronze, Silver, Gold)
         save_results = storage.save_trial_files(
             ct_number=ct_number,
-            parsed_files=parsed_files,
+            parsed_files=silver_files,
+            raw_payload=raw_payload,
+            gold_record=gold_record,
             backend=storage_backend,
         )
 

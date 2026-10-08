@@ -1,6 +1,6 @@
 # EU CTIS Clinical Trial Data Pipeline (ETL)
 
-A Python ETL (Extract, Transform, Load) pipeline designed to ingest clinical trial data from the **European Union Clinical Trials Information System (CTIS)** public API, normalize and split each trial into 6 domain-specific JSON files, and store them locally and/or in **Amazon S3** with state tracking in **Amazon DynamoDB** and local **SQLite**.
+A Python ETL (Extract, Transform, Load) pipeline designed to ingest clinical trial data from the **European Union Clinical Trials Information System (CTIS)** public API, structure each trial across a **Medallion Data Architecture (Bronze → Silver → Gold)**, and persist outputs to local storage and/or **Amazon S3** with dual state tracking in **Amazon DynamoDB** and local **SQLite**.
 
 ---
 
@@ -36,19 +36,29 @@ A Python ETL (Extract, Transform, Load) pipeline designed to ingest clinical tri
 
 ---
 
-## 2. Target Output Structure
+## 2. Medallion Target Output Structure
 
-For every ingested clinical trial (`ctNumber`), 6 discrete JSON entities are created:
+For every ingested clinical trial (`ctNumber`), data is organized across the three Medallion tiers:
 
 ```text
-data/
-└── 2026-527084-15-00/
-    ├── meta_data.json                     # Status, publication dates, trial region, ingestion timestamp
-    ├── summary.json                       # Identifiers, titles, sponsors, trial phase, medical conditions
-    ├── full_trial_information.json        # Full scientific Part I protocol dossier & eligibility criteria
-    ├── trial_documents.json               # Public document catalog & UUID metadata
-    ├── trial_results.json                 # Trial outcome summaries & clinical study reports
-    └── locations_and_contact_points.json  # Participating countries, recruitment sites, & sponsor contacts
+data/ (or s3://aascent-mindgram/ctis/)
+│
+├── bronze/
+│   └── 2026-527084-15-00/
+│       └── raw.json                           # 🥉 Bronze: Raw untouched EMA CTIS API response
+│
+├── silver/
+│   └── 2026-527084-15-00/
+│       ├── meta_data.json                     # 🥈 Silver: Status, regulatory dates, trial region, lineage
+│       ├── summary.json                       # 🥈 Silver: Identifiers, titles, sponsors, trial phase
+│       ├── full_trial_information.json        # 🥈 Silver: Complete scientific Part I protocol dossier
+│       ├── trial_documents.json               # 🥈 Silver: Public regulatory documents & UUID metadata
+│       ├── trial_results.json                 # 🥈 Silver: Trial outcome summaries & clinical reports
+│       └── locations_and_contact_points.json  # 🥈 Silver: Member states, trial sites, sponsor contacts
+│
+└── gold/
+    └── 2026-527084-15-00/
+        └── trial_analytics.json               # 🥇 Gold: Flattened dimensional summary for BI/analytics
 ```
 
 ---

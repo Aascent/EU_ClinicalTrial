@@ -122,19 +122,38 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 
 ---
 
-## 4. Normalization Contracts: The 6 Output Entities
+## 4. Medallion Data Architecture (Bronze → Silver → Gold)
 
-For every ingested trial, the pipeline splits the raw dossier into **exactly 6 JSON entities**, saved under `./data/{ctNumber}/` (or S3 `ctis/{ctNumber}/`):
+The pipeline organizes data into the industry-standard Medallion Architecture across both local disk and AWS S3:
 
 ```text
-./data/{ctNumber}/
-├── meta_data.json
-├── summary.json
-├── full_trial_information.json
-├── trial_documents.json
-├── trial_results.json
-└── locations_and_contact_points.json
+data/ (or s3://aascent-mindgram/ctis/)
+│
+├── bronze/
+│   └── 2026-527084-15-00/
+│       └── raw.json                           # 🥉 Bronze: Raw untouched EMA CTIS API response
+│
+├── silver/
+│   └── 2026-527084-15-00/
+│       ├── meta_data.json                     # 🥈 Silver: Status, regulatory dates, trial region, lineage
+│       ├── summary.json                       # 🥈 Silver: Identifiers, titles, sponsors, trial phase
+│       ├── full_trial_information.json        # 🥈 Silver: Complete scientific Part I protocol dossier
+│       ├── trial_documents.json               # 🥈 Silver: Public regulatory documents & UUID metadata
+│       ├── trial_results.json                 # 🥈 Silver: Trial outcome summaries & clinical reports
+│       └── locations_and_contact_points.json  # 🥈 Silver: Member states, trial sites, sponsor contacts
+│
+└── gold/
+    └── 2026-527084-15-00/
+        └── trial_analytics.json               # 🥇 Gold: Flattened dimensional summary for BI/analytics
 ```
+
+### 4.1 Bronze Layer (Raw Ingestion)
+* **Filename:** `raw.json`
+* **Purpose:** Stores the unmodified raw API response payload from `GET /retrieve/{ctNumber}`.
+* **Benefits:** Immutable audit trail, compliance verification, and zero-network local reprocessing if upstream schemas evolve or extraction criteria change.
+
+### 4.2 Silver Layer (Domain-Normalized Entities)
+The raw dossier is parsed into 6 discrete, well-structured domain files:
 
 | Entity File | Primary Source Fields | Purpose & Normalization Behavior |
 | :--- | :--- | :--- |
@@ -144,6 +163,17 @@ For every ingested trial, the pipeline splits the raw dossier into **exactly 6 J
 | **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
 | **`trial_results.json`** | Root: `results` object | Clinical trial results and study reports (persisted as `{}` if none submitted yet). |
 | **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (member states, trial sites, organizations) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
+
+### 4.3 Gold Layer (Business Analytics & BI Consumption)
+* **Filename:** `trial_analytics.json`
+* **Purpose:** A single, high-performance, flattened tabular row containing all core analytical dimensions for immediate ingestion into Snowflake, BigQuery, DuckDB, Parquet, or BI tools (PowerBI/Tableau):
+  * **Clinical & Trial Metadata:** `ct_number`, `full_title`, `status`, `trial_phase_code`, `trial_phase_label`, `is_low_intervention`
+  * **Pharmacology:** `active_substances` (deduplicated array), `product_names`, `products_count`
+  * **Sponsors:** `sponsors`, `sponsor_types`
+  * **Scale & Geography:** `participating_countries`, `trial_sites_count`, `total_recruitment_subjects`
+  * **Therapeutics:** `medical_conditions`, `therapeutic_areas`, `primary_endpoints`
+  * **Counts & Completeness:** `inclusion_criteria_count`, `exclusion_criteria_count`, `documents_count`, `has_results`
+  * **Timelines:** `estimated_start_date`, `estimated_end_date`, `decision_date`, `publish_date`, `ingestion_timestamp`
 
 ---
 

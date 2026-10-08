@@ -56,9 +56,33 @@ The European Union Clinical Trials Information System (CTIS) is the single entry
 
 ---
 
-## 3. Data Normalization: The 6 Output Entities
+## 3. Medallion Architecture: Bronze, Silver & Gold Tiers
 
-The monolithic API response from `GET /retrieve/{ctNumber}` is parsed into 6 discrete, well-structured JSON documents stored under `./data/{ctNumber}/` (or `s3://{bucket}/{prefix}{ctNumber}/`):
+The pipeline processes each retrieved trial across the three Medallion architecture tiers:
+
+```
+┌─────────────────────────────────┐
+│     🥉 BRONZE TIER (RAW)        │  raw.json
+│  Exact, untouched EMA payload   │  Stored in bronze/{ctNumber}/
+└────────────────┬────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────┐
+│    🥈 SILVER TIER (CURATED)     │  6 Domain JSON Entities
+│  Normalized domain-specific     │  Stored in silver/{ctNumber}/
+│  entity files                   │  (meta_data, summary, full_trial, etc.)
+└────────────────┬────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────┐
+│     🥇 GOLD TIER (ANALYTICS)    │  trial_analytics.json
+│  Flattened dimensional record   │  Stored in gold/{ctNumber}/
+│  for BI, analytics & dashboards │  (Single queryable table row)
+└─────────────────────────────────┘
+```
+
+### 3.1 Silver Tier: The 6 Domain Entities
+The monolithic API response from `GET /retrieve/{ctNumber}` is parsed into 6 discrete, well-structured JSON documents stored under `silver/{ctNumber}/` (and `data/{ctNumber}/` for backward compatibility):
 
 | File Name | Primary Source Fields | Purpose |
 | :--- | :--- | :--- |
@@ -68,6 +92,17 @@ The monolithic API response from `GET /retrieve/{ctNumber}` is parsed into 6 dis
 | **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
 | **`trial_results.json`** | Root: `results` object | Clinical study results and outcome reports (empty `{}` if not yet submitted). |
 | **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (MSCs and recruitment sites) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
+
+### 3.2 Gold Tier: Dimensional Business Analytics (`trial_analytics.json`)
+The Gold tier provides an un-nested, flattened tabular record stored under `gold/{ctNumber}/trial_analytics.json`. It combines the most vital fields from all 6 Silver entities into a single, high-performance analytical row ready for ingestion into Snowflake, BigQuery, Parquet, or BI tools:
+* **Identifiers & Lineage:** `ct_number`, `full_title`, `status`, `status_code`, `trial_region`, `decision_date`, `publish_date`, `ingestion_timestamp`
+* **Trial Classification:** `trial_phase_code`, `trial_phase_label` (e.g. `Phase IV (Therapeutic use)`), `is_low_intervention`
+* **Pharmacology:** `active_substances` (deduplicated array), `product_names`, `products_count`
+* **Sponsorship:** `sponsors`, `sponsor_types`
+* **Geography & Scale:** `participating_countries`, `trial_sites_count`, `total_recruitment_subjects`
+* **Clinical Scope:** `medical_conditions`, `therapeutic_areas`, `primary_endpoints`
+* **Metrics & Counts:** `inclusion_criteria_count`, `exclusion_criteria_count`, `documents_count`, `has_results`
+* **Timeline:** `estimated_start_date`, `estimated_end_date`
 
 ---
 
