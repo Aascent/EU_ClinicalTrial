@@ -1,0 +1,15 @@
+# Core HTTP & Networking
+httpx>=0.27.0
+
+# Data Validation & Serialization
+pydantic>=2.6.0
+
+# Resilience & Retries
+tenacity>=8.2.0
+
+# Environment Management
+python-dotenv>=1.0.0
+
+# AWS SDK for S3 and DynamoDB
+boto3>=1.34.0
+botocore>=1.34.0

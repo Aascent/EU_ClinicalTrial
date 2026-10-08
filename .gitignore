@@ -219,4 +219,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-docs/*
+# Pipeline runtime data and databases
+data/
+quarantine/
+logs/
+tracker.db
+*.log
