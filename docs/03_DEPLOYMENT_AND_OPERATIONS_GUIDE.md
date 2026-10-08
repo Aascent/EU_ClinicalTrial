@@ -1,7 +1,7 @@
 # EU CTIS Pipeline - Deployment & Operations Guide
 
 **Document ID:** OPS-001  
-**Version:** 1.0  
+**Version:** 1.1 (Production Hardened)  
 **Scope:** Production containerization, AWS setup, scheduled operations, monitoring, and runbooks.
 
 ---
@@ -140,3 +140,20 @@ To back up the local tracking database:
 # Safely snapshot SQLite with WAL mode enabled
 sqlite3 tracker.db ".backup tracker_backup.db"
 ```
+
+### Runbook 4: Stale In-Flight Job Recovery
+If a node unexpectedly terminates while processing trials, jobs may remain marked as `PROCESSING`:
+* The pipeline automatically self-heals by running `reset_stale_processing(timeout_minutes=15)` at the beginning of each run.
+* Any job stuck in `PROCESSING` longer than 15 minutes is automatically rolled back to `PENDING` so it will be retried without manual intervention.
+
+### Runbook 5: Log Rotation & Maintenance
+* Execution logs are written to `logs/etl.log` using `RotatingFileHandler`.
+* Maximum size is set to **10 MB** with **5 backup files** (`etl.log.1` through `etl.log.5`), preventing disk bloat during 24/7 continuous operations.
+* Console stdout logs are mirrored to Docker daemon logging drivers (e.g. `json-file` with `max-size: "100m"`).
+
+### Runbook 6: Graceful Process Termination
+When initiating container restarts or node maintenance:
+* Docker sends `SIGTERM`, which is trapped by `ctis_etl/main.py`.
+* Active workers complete their current trial write and commit the database transaction before stopping.
+* No partial or corrupted files are left in storage because all writes use `.tmp` atomic renames and all S3 uploads are verified before committing.
+

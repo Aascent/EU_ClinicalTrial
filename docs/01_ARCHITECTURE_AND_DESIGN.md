@@ -1,7 +1,7 @@
 # EU CTIS Pipeline - Architecture & System Design
 
 **Document ID:** ARCH-001  
-**Version:** 1.0  
+**Version:** 1.1 (Production Hardened)  
 **Scope:** Architecture, data flow, normalization schemas, and storage abstractions for the EU CTIS Data Pipeline.
 
 ---
@@ -28,6 +28,7 @@ The European Union Clinical Trials Information System (CTIS) is the single entry
                                               ▼
                                  ┌─────────────────────────┐
                                  │     CTISClient          │
+                                 │  - Persistent httpx pool│
                                  │  - Jittered Backoff     │
                                  │  - 1-Indexed Pagination │
                                  │  - Non-existent Handling│
@@ -37,7 +38,9 @@ The European Union Clinical Trials Information System (CTIS) is the single entry
                       ▼                                               ▼
          ┌─────────────────────────┐                     ┌─────────────────────────┐
          │     database.py         │                     │       parser.py         │
-         │  - SQLite (WAL Mode)    │                     │  Splits raw dossier     │
+         │  - SQLite (WAL Mode)    │                     │  - Type-safe navigation │
+         │  - PROCESSING Lock      │                     │  - Zero data-loss Part I│
+         │  - Stale Auto-Recovery  │                     │  Splits raw dossier     │
          │  - Amazon DynamoDB      │                     │  into 6 domain entities │
          │  - Run Metrics Log      │                     └────────────┬────────────┘
          └─────────────────────────┘                                  │
@@ -45,7 +48,8 @@ The European Union Clinical Trials Information System (CTIS) is the single entry
                                                          ┌─────────────────────────┐
                                                          │       storage.py        │
                                                          │  - Local Disk (./data/) │
-                                                         │  - Amazon S3 Bucket     │
+                                                         │  - S3 (AES-256 + Meta)  │
+                                                         │  - Atomic .tmp Rename   │
                                                          │  - Quarantine Handler   │
                                                          └─────────────────────────┘
 ```
@@ -60,35 +64,57 @@ The monolithic API response from `GET /retrieve/{ctNumber}` is parsed into 6 dis
 | :--- | :--- | :--- |
 | **`meta_data.json`** | Root: `ctNumber`, `ctStatus`, `decisionDate`, `publishDate`, `ctPublicStatusCode`, `trialRegion`, `events`, `correctiveMeasures` | Regulatory status, lineage timestamps, pipeline versioning, and lifecycle events. |
 | **`summary.json`** | `authorizedPartI.trialDetails.clinicalTrialIdentifiers`, `sponsors`, `trialCategory.trialPhase`, `medicalConditions`, `therapeuticAreas` | High-level overview for fast indexing, search engines, and summary dashboards. |
-| **`full_trial_information.json`** | Entire `authorizedApplication.authorizedPartI` object | Deep scientific dossier: protocol design, inclusion/exclusion criteria, objectives, and investigational products. |
+| **`full_trial_information.json`** | Entire `authorizedApplication.authorizedPartI` object | Deep scientific dossier: protocol design, inclusion/exclusion criteria, objectives, and investigational products. Preserved as-is to guarantee zero schema loss. |
 | **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
 | **`trial_results.json`** | Root: `results` object | Clinical study results and outcome reports (empty `{}` if not yet submitted). |
 | **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (MSCs and recruitment sites) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
 
 ---
 
-## 4. State Management & Multi-Process Concurrency
+## 4. Defensive Schema Parsing (`parser.py`)
 
-State tracking guarantees idempotency, resumability, and avoids duplicate downloads:
-
-### 4.1 SQLite State Storage (`tracker.db`)
-* **WAL Mode (`PRAGMA journal_mode=WAL;`):** Enables non-blocking concurrent reads and serialized writes. The background historical crawler and recurring cron tasks can execute simultaneously without hitting `database is locked` errors.
-* **Trial States:**
-  * `PENDING`: New trial discovered, awaiting ingestion.
-  * `UPDATE_PENDING`: Existing trial whose publication date is newer than the recorded date.
-  * `SUCCESS`: Ingested, validated, and persisted.
-  * `FAILED`: Exceeded retry threshold (quarantined).
-
-### 4.2 Amazon DynamoDB (`EU_Clinical`)
-* Primary Partition Key: `euc` (holds `ctNumber`, e.g. `2026-527084-15-00`).
-* Stores synchronization metadata, publication timestamps, and retry audit logs.
+To ensure that sudden upstream CTIS schema changes, renamed keys, or unexpected nulls never crash the pipeline:
+1. **Type-Safe Navigation Helpers (`_safe_dict`, `_safe_list`):** Every nested access verifies object types and falls back to empty `{}` or `[]` without raising `KeyError` or `AttributeError`.
+2. **Whole-Object Preservation:** `full_trial_information.json` stores the complete Part I scientific dictionary directly. If EMA introduces new regulatory attributes, they are preserved immediately without requiring code edits.
+3. **Pydantic Model Tolerance (`extra = "allow"`):** Upstream attribute additions are accepted transparently.
 
 ---
 
-## 5. Fault Tolerance & Quarantine Strategy
+## 5. State Management & Multi-Process Concurrency
 
-1. **Atomic File Persistence:** Local files are written to `.tmp` files and atomically renamed to prevent partial writes.
-2. **All-or-Nothing Upload Verification:** All 6 target files must succeed before a trial is marked as `SUCCESS`. If any file fails to save or upload to S3, the trial is moved to retry/quarantine.
-3. **Quarantine Directory (`./quarantine/`):** Malformed payloads or unrecoverable API errors are saved as:
+State tracking guarantees idempotency, resumability, and collision-free concurrency:
+
+### 5.1 SQLite State Storage (`tracker.db`)
+* **WAL Mode (`PRAGMA journal_mode=WAL;`):** Enables non-blocking concurrent reads and serialized writes. The background historical crawler and recurring cron tasks execute simultaneously without hitting `database is locked` errors.
+* **Busy Timeout (`PRAGMA busy_timeout=30000;`):** Waits up to 30 seconds for concurrent writes to commit.
+* **Enterprise State Machine:**
+  * `PENDING`: Discovered, awaiting ingestion.
+  * `PROCESSING`: In-flight; locked so concurrent processes or cron runs will not double-process it.
+  * `UPDATE_PENDING`: Existing trial whose publication date is newer than the recorded date.
+  * `SUCCESS`: Fully extracted, verified, and saved to S3/disk.
+  * `FAILED`: Exceeded retry threshold (quarantined).
+* **Self-Healing Stale Job Recovery:** On every startup, `database.reset_stale_processing(timeout_minutes=15)` scans for trials stuck in `PROCESSING` (e.g. from container restarts or worker crashes) and resets them to `PENDING`.
+
+### 5.2 Amazon DynamoDB (`EU_Clinical`)
+* Primary Partition Key: `euc` (holds `ctNumber`, e.g. `2026-527084-15-00`).
+* Configured with adaptive botocore retries (`max_attempts=4, mode="adaptive"`) to prevent write capacity throttling.
+
+---
+
+## 6. Storage Security & Atomic Verification (`storage.py`)
+
+1. **Atomic File Persistence:** Local files are written to `.tmp` files and atomically renamed.
+2. **All-or-Nothing Upload Verification:** All 6 target files must succeed and be non-empty (`file_size > 0`). If any file fails to save or upload to S3, the trial is moved to retry/quarantine.
+3. **S3 Server-Side Encryption:** Configured with `ServerSideEncryption="AES256"`.
+4. **S3 Metadata Headers:** Injects audit tags (`ct-number`, `ingested-at`, `filename`) directly into object metadata for automated governance.
+5. **Quarantine Directory (`./quarantine/`):** Malformed payloads or unrecoverable API errors are saved as:
    * `./quarantine/{ctNumber}_{timestamp}.json` (Raw response)
    * `./quarantine/{ctNumber}_{timestamp}.error.log` (Full stack trace)
+
+---
+
+## 7. Networking, Connection Pooling & Lifecycle
+
+1. **Persistent Connection Pool:** Uses `httpx.Client` with HTTP keepalive, HTTP/2, and pooled connections (up to 50 concurrent connections), falling back to `urllib.request` when `httpx` is unavailable.
+2. **Graceful Shutdown (`SIGTERM`/`SIGINT`):** When container engines terminate the process, active worker tasks drain cleanly and commit their database records before exiting.
+3. **Rotating Log Handlers (`RotatingFileHandler`):** Limits log files to 10 MB with 5 backups to prevent disk exhaustion.

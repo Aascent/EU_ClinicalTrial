@@ -1,14 +1,14 @@
 # EU CTIS Data Pipeline - ETL Implementation Guide
 
-**Document Version:** 1.1 (Verified & Enhanced)  
-**Target Environment:** Local Python ETL Pipeline (Modular architecture prepared for cloud migration)  
-**Primary Data Source:** EU Clinical Trials Information System (CTIS) Public REST API  
+**Document Version:** 2.0 (Production Hardened & Cloud-Integrated)  
+**Target Environment:** Local & Cloud Hybrid (SQLite/DynamoDB + Local/S3 storage with Docker multi-process orchestration)  
+**Primary Data Source:** EU Clinical Trials Information System (CTIS) Public REST API (`https://euclinicaltrials.eu/ctis-public-api`)  
 
 ---
 
 ## 1. Project Overview & Scope
 
-The objective is to build a reliable, maintainable, and incremental Python ETL (Extract, Transform, Load) pipeline that ingests clinical trial records from the European Medicines Agency (EMA) CTIS public API, transforms them into 6 domain-specific JSON files per trial, and stores them in organized local directory hierarchies.
+The objective is to operate a reliable, maintainable, self-healing, and incremental Python ETL (Extract, Transform, Load) pipeline that ingests clinical trial records from the European Medicines Agency (EMA) CTIS public API, transforms them into 6 domain-specific JSON files per trial, and persists them to local storage and Amazon S3 with dual state tracking in SQLite and Amazon DynamoDB.
 
 ### 1.1 Critical Domain Context
 
@@ -17,43 +17,56 @@ The objective is to build a reliable, maintainable, and incremental Python ETL (
   * As of late 2026, CTIS hosts approximately **~12,500–13,000 trials**.
   * The historical legacy database **EudraCT** contains older trials (~31,000+ studies). EudraCT is separate and not exposed by the CTIS public API endpoints. This pipeline strictly targets the modern **CTIS API**.
 * **Target Output:**
-  * Each clinical trial (`ctNumber`, e.g., `2026-527084-15-00`) is parsed into a dedicated folder containing **6 discrete JSON files**.
-  * Deeply nested nested structures from the raw monolithic API response are normalized into clean, modular entities.
-* **Pipeline Principles:**
+  * Each clinical trial (`ctNumber`, e.g., `2026-527084-15-00`) is parsed into a dedicated folder or S3 key prefix containing **6 discrete JSON files**.
+  * Deeply nested structures from the raw monolithic API response are normalized into clean, modular entities.
+* **Core Engineering Principles:**
   * **Idempotency:** Re-running the pipeline on previously processed data must not corrupt state or duplicate records.
-  * **Incremental Daily Synchronization:** Daily runs must only process newly registered or recently amended trials using a configurable lookback window (default: 7 days) without re-scraping the entire dataset.
-  * **Fault Tolerance & Quarantine:** Malformed records or schema regressions must be trapped into a quarantine folder rather than terminating the pipeline batch.
+  * **Three-Process Synchronization:**
+    1. *Process 1 (Historical Backfill):* Ingests the entire catalog (~12,500 trials) across all pages.
+    2. *Process 2 (New Trials Sync):* Runs periodically (e.g. every 6 hours) with a 7-day lookback window to capture newly registered trials.
+    3. *Process 3 (Updates Sync):* Runs daily (e.g. at 02:00 AM UTC) with a 7-day lookback window to capture amended trials.
+  * **Zero Data Loss Schema Evolution:** Deep nested structures (such as Part I scientific dossiers) are preserved as raw dictionaries to protect against upstream EMA schema additions.
+  * **Fault Tolerance & Quarantine:** Malformed records or schema regressions are trapped into a dedicated quarantine store rather than terminating batch execution.
+  * **Production Guardrails:** Connection pooling, jittered exponential backoffs, strict all-file write verification, AES-256 S3 encryption, rotating log files, and graceful shutdown signal trapping.
 
 ---
 
-## 2. Architecture Overview
+## 2. System Architecture
 
 ```mermaid
 flowchart TD
-    A[Start Pipeline] --> B[Check / Init SQLite DB tracker.db]
-    B --> C{Run Mode?}
-    C -->|Incremental| D[Search API: Page 1..N sorted by decisionDate DESC]
-    C -->|Full / Backfill| E[Search API: All Pages]
-    C -->|Single Trial| F[Queue Single ctNumber]
-    
-    D --> G[Parse lastUpdated / decisionDate]
-    G --> H[Stop pagination when older than lookback threshold]
-    H --> I[Compare ctNumber & dates against DB]
-    E --> I
-    F --> I
-    
-    I --> J[Stage PENDING & UPDATE_PENDING into SQLite]
-    J --> K[ThreadPoolExecutor max_workers=5]
-    
-    K --> L[Retrieve API: GET /retrieve/{ctNumber}]
-    L --> M{Validate Response}
-    M -->|Empty / 404 / Invalid HTML| N[Record Retry / Mark FAILED]
-    M -->|Pydantic Schema Error| O[Move Raw Payload to quarantine/ & Mark FAILED]
-    M -->|Valid JSON| P[Split into 6 Target JSON Dictionaries]
-    
-    P --> Q[Write 6 Files to ./data/{ctNumber}/]
-    Q --> R[Update SQLite: SUCCESS & last_publish_date]
-    R --> S[Summary Log & Metrics]
+    subgraph CTIS_API [European Medicines Agency CTIS API]
+        SearchAPI["POST /search (1-indexed pagination)"]
+        RetrAPI["GET /retrieve/{ctNumber}"]
+    end
+
+    subgraph Client [CTIS Client Layer]
+        Pool["Persistent httpx Connection Pool<br/>Keep-Alive + HTTP/2 + Backoff"]
+    end
+
+    subgraph State [Dual State Tracking]
+        SQLite["SQLite (tracker.db)<br/>PRAGMA journal_mode=WAL<br/>Self-Healing Stale Job Reset"]
+        Dynamo["Amazon DynamoDB<br/>Table: EU_Clinical<br/>PK: euc"]
+    end
+
+    subgraph Normalization [Parser Layer]
+        TypeSafe["Type-Safe Safe Dict/List Extractors"]
+        SchemaPreserve["Part I Scientific Dossier Preservation"]
+    end
+
+    subgraph Storage [Dual Storage Engines]
+        Local["Local Atomic Write (.tmp -> rename)<br/>./data/{ctNumber}/"]
+        S3["Amazon S3 (Bucket: aascent-mindgram)<br/>ctis/{ctNumber}/*<br/>AES-256 + Metadata Audit Tags"]
+        Quarantine["Quarantine Engine<br/>./quarantine/{ctNumber}_*.json<br/>./quarantine/{ctNumber}_*.error.log"]
+    end
+
+    SearchAPI --> Pool
+    RetrAPI --> Pool
+    Pool --> Normalization
+    Normalization --> Storage
+    Normalization --> Quarantine
+    State <--> Normalization
+    State <--> Storage
 ```
 
 ---
@@ -65,7 +78,7 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 ### 3.1 Search Endpoint (Catalog & Pagination)
 
 * **URL:** `https://euclinicaltrials.eu/ctis-public-api/search`
-* **Method:** `POST` *(Note: `GET` is disallowed and will return HTTP 405/400)*
+* **Method:** `POST` *(Note: `GET` is disallowed and returns HTTP 405/400)*
 * **Headers:**
   ```http
   Content-Type: application/json
@@ -76,8 +89,9 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 1. **1-Indexed Pagination:** The API expects `"page": 1` for the first page. Passing `"page": 0` returns `totalRecords: 0` and empty results.
 2. **Mandatory `searchCriteria` Object:** The request payload **must** include `"searchCriteria": {}`. Omitting it will return 0 records.
 3. **Sort Fields:** To fetch the most recently evaluated or updated trials first, sort by `decisionDate` or `lastPublicationUpdate` in `DESC` order.
+4. **Date Parsing:** Dates in `data[]` are formatted as `DD/MM/YYYY` strings (e.g. `"07/10/2026"`), occasionally prefixed by country identifiers (e.g. `"HU: 07/10/2026"`). Prefix stripping via regex is applied before parsing.
 
-#### Example Request Body:
+#### Request Body Structure:
 ```json
 {
   "pagination": {
@@ -92,48 +106,6 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 }
 ```
 
-#### Response Envelope Structure:
-```json
-{
-  "showWarning": true,
-  "pagination": {
-    "totalRecords": 12573,
-    "currentPage": 1,
-    "totalPages": 126,
-    "nextPage": true,
-    "prevPage": false
-  },
-  "data": [
-    {
-      "ctNumber": "2026-527084-15-00",
-      "ctStatus": 2,
-      "ctTitle": "Evaluation of Thrombin Generation...",
-      "conditions": "Venous Thromboembolism...",
-      "trialCountries": ["Hungary:2"],
-      "decisionDateOverall": "07/10/2026",
-      "decisionDate": "HU: 07/10/2026",
-      "therapeuticAreas": ["Diseases [C] - Cardiovascular Diseases [C14]"],
-      "sponsor": "University Of Debrecen",
-      "sponsorType": "Educational Institution",
-      "trialPhase": "Therapeutic use (Phase IV)",
-      "endPoint": "...",
-      "product": "...",
-      "ageGroup": "18-64 years",
-      "gender": "Female",
-      "trialRegion": 1,
-      "totalNumberEnrolled": "350",
-      "primaryEndPoint": "...",
-      "resultsFirstReceived": "No",
-      "lastUpdated": "07/10/2026",
-      "lastPublicationUpdate": "08/10/2026"
-    }
-  ]
-}
-```
-
-> [!NOTE]
-> Dates returned in `data[]` from the search endpoint are formatted as `DD/MM/YYYY` strings (e.g. `"07/10/2026"`). Your incremental logic must parse them via `datetime.strptime(date_str, "%d/%m/%Y")`.
-
 ---
 
 ### 3.2 Retrieve Endpoint (Detailed Dossier)
@@ -143,296 +115,161 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 * **Example:** `https://euclinicaltrials.eu/ctis-public-api/retrieve/2026-527084-15-00`
 
 #### Live Quirks & Edge Cases:
-* **Non-existent Trials:** Returns `200 OK` with an empty object `{}` rather than a `404 Not Found`. Always verify that `data.get("ctNumber") == ctNumber`.
-* **HTML Error Pages:** On certain internal errors or malformed URLs, the gateway can return `200 OK` with `text/html` markup. Always verify that `Content-Type` is JSON and that JSON parsing succeeds.
-* **Payload Latency:** Full trial dossiers can be 50KB to 2MB+ with extensive sponsor, site, and document arrays. Set a connect timeout of 10s and a read timeout of 30s.
-* **Timestamps:** Unlike the search endpoint, the retrieve endpoint uses ISO-8601 timestamps (e.g., `"2026-10-07T15:43:07.693"` and `"2026-10-08T03:32:46.650903775"`).
+* **Missing Trials Return HTTP 200 `{}`:** Non-existent trial numbers return `200 OK` with an empty JSON object `{}` instead of `404 Not Found`. Always verify that `data.get("ctNumber") == ctNumber`.
+* **HTML Error Pages:** On upstream gateway glitches, responses may contain HTML markup with `200 OK`. The client verifies that `Content-Type` is JSON before decoding.
+* **Payload Latency:** Complete trial dossiers range between 50KB and 2MB+ with extensive sponsor, site, and document arrays. Connect timeout is set to 10s and read timeout to 30s.
+* **Timestamps:** Unlike the search endpoint, the retrieve endpoint uses ISO-8601 timestamps (e.g. `"2026-10-07T15:43:07.693"`).
 
 ---
 
-## 4. Target Local Folder & File Structure
+## 4. Normalization Contracts: The 6 Output Entities
 
-For every ingested trial, create a directory under the storage root named after the `ctNumber`:
+For every ingested trial, the pipeline splits the raw dossier into **exactly 6 JSON entities**, saved under `./data/{ctNumber}/` (or S3 `ctis/{ctNumber}/`):
 
 ```text
-./data/
-└── 2026-527084-15-00/
-    ├── meta_data.json
-    ├── summary.json
-    ├── full_trial_information.json
-    ├── trial_documents.json
-    ├── trial_results.json
-    └── locations_and_contact_points.json
+./data/{ctNumber}/
+├── meta_data.json
+├── summary.json
+├── full_trial_information.json
+├── trial_documents.json
+├── trial_results.json
+└── locations_and_contact_points.json
 ```
+
+| Entity File | Primary Source Fields | Purpose & Normalization Behavior |
+| :--- | :--- | :--- |
+| **`meta_data.json`** | Root: `ctNumber`, `ctStatus`, `decisionDate`, `publishDate`, `ctPublicStatusCode`, `trialRegion`, `events`, `correctiveMeasures` | Status lineage, regulatory events, ingested UTC timestamp, and pipeline version. |
+| **`summary.json`** | `authorizedPartI.trialDetails.clinicalTrialIdentifiers`, `sponsors`, `trialCategory.trialPhase`, `medicalConditions`, `therapeuticAreas` | High-level summary view for search indexing and summary dashboards. |
+| **`full_trial_information.json`** | Entire `authorizedApplication.authorizedPartI` object | Scientific protocol, inclusion/exclusion criteria, trial design, and medicinal products. Stored directly to prevent schema regressions. |
+| **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
+| **`trial_results.json`** | Root: `results` object | Clinical trial results and study reports (persisted as `{}` if none submitted yet). |
+| **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (member states, trial sites, organizations) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
 
 ---
 
-## 5. JSON Extraction & Mapping Specification
+## 5. State Management & Multi-Process Concurrency
 
-The raw dossier from `GET /retrieve/{ctNumber}` contains high-level metadata along with nested objects `authorizedApplication`, `documents`, `results`, and `events`. Split this payload into 6 clean output files as specified below:
+State tracking guarantees idempotency, resumability, and collision-free concurrency:
 
-### 5.1 `meta_data.json`
-Captures high-level status, dates, and lineage.
+### 5.1 SQLite State Storage (`tracker.db`)
+* **WAL Mode (`PRAGMA journal_mode=WAL;`):** Enables non-blocking concurrent reads and serialized writes. The background historical crawler and recurring cron tasks execute simultaneously without hitting `database is locked` errors.
+* **Busy Timeout (`PRAGMA busy_timeout=30000;`):** Waits up to 30 seconds for concurrent writes to commit.
+* **State Machine:**
+  * `PENDING`: Discovered, awaiting ingestion.
+  * `PROCESSING`: In-flight; locked so concurrent processes or cron runs will not double-process it.
+  * `UPDATE_PENDING`: Existing trial whose publication date is newer than the recorded date.
+  * `SUCCESS`: Fully extracted, verified, and saved to S3/disk.
+  * `FAILED`: Exceeded retry threshold (quarantined).
+* **Self-Healing Stale Job Recovery:** On startup and before batch runs, `reset_stale_processing(timeout_minutes=15)` scans for trials stuck in `PROCESSING` (e.g. from container restarts or worker crashes) and resets them to `PENDING`.
 
-* **Source Fields:**
-  * `ctNumber` (string)
-  * `ctStatus` (string, e.g., `"Authorised"`)
-  * `decisionDate` (ISO string)
-  * `publishDate` (ISO string)
-  * `ctPublicStatusCode` (integer)
-  * `trialRegion` (string, e.g., `"EEA"`)
-  * `trialRegionCode` (integer)
-  * `events` (array, if present)
-  * `correctiveMeasures` (array/object, if present)
-* **Injected Pipeline Fields:**
-  * `ingestion_timestamp`: UTC ISO timestamp when the trial was processed (e.g., `"2026-10-08T14:30:00Z"`).
-  * `pipeline_version`: Version string (e.g., `"1.0.0"`).
-
-### 5.2 `summary.json`
-Provides a human-readable summary view for fast indexing and search.
-
-* **Extraction Paths:**
-  * **Titles & Identifiers:** `authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers`
-  * **Sponsors:** `authorizedApplication.authorizedPartI.sponsors`
-  * **Trial Phase:** `authorizedApplication.authorizedPartI.trialDetails.trialInformation.trialCategory.trialPhase`
-  * **Medical Conditions:** `authorizedApplication.authorizedPartI.medicalConditions`
-  * **Therapeutic Areas:** `authorizedApplication.authorizedPartI.therapeuticAreas`
-* **Fallback Rules:** If any nested dictionary or field is missing, output `None` or an empty list `[]` without raising `KeyError`.
-
-### 5.3 `full_trial_information.json`
-The complete Part I scientific protocol and clinical design dossier.
-
-* **Extraction Path:**
-  * Extract the entire object: `authorizedApplication.authorizedPartI`
-* **Contains:**
-  * `products` (investigational medicinal products, active substances, dosages)
-  * `trialDetails` (primary/secondary objectives, inclusion/exclusion criteria, trial design, scientific advice)
-  * `protocolInformation`
-  * `therapeuticAreas`
-  * `medicalConditions`
-
-### 5.4 `trial_documents.json`
-Metadata catalog of all attached public documents and regulatory submissions.
-
-* **Extraction Path:**
-  * Extract root array: `documents` (default to `[]` if null)
-* **Metadata Fields per Document:**
-  * `title`, `uuid`, `documentType`, `documentTypeLabel`, `languageCode`, `fileType`, `manualVersion`, `systemVersion`
-* **Document Downloads:** Direct file downloads for documents are restricted behind portal sessions; store the metadata array.
-
-### 5.5 `trial_results.json`
-Trial outcome summaries and clinical study reports.
-
-* **Extraction Path:**
-  * Extract root object: `results`
-* **Handling Incomplete Trials:**
-  * For trials in progress or without submitted results, this object is empty `{}`. The parser must write `{}` and not fail.
-
-### 5.6 `locations_and_contact_points.json`
-Geographic footprint, recruitment sites, principal investigators, and sponsor contacts.
-
-* **Extraction Paths:**
-  * **Member States & Sites:** `authorizedApplication.authorizedPartsII` (an array where each element contains `mscInfo`, `decisionDate`, `recruitmentSubjectCount`, and `trialSites` with organization addresses and contact details).
-  * **Sponsor Contact Points:** From each sponsor in `authorizedApplication.authorizedPartI.sponsors`, extract:
-    * `publicContacts` (list)
-    * `scientificContacts` (list)
-* **Constructed Output Format:**
-  ```json
-  {
-    "ctNumber": "2026-527084-15-00",
-    "memberStates": [ ... ], // from authorizedPartsII
-    "sponsorContacts": [
-      {
-        "sponsorOrganisation": "...",
-        "publicContacts": [ ... ],
-        "scientificContacts": [ ... ]
-      }
-    ]
-  }
-  ```
+### 5.2 Amazon DynamoDB (`EU_Clinical`)
+* **Partition Key:** `euc` (holds the `ctNumber`, e.g. `2026-527084-15-00`).
+* **Adaptive Retry Mode:** Configured with `botocore` adaptive retries (`max_attempts=4`) to avoid capacity throttling during high-throughput backfills.
 
 ---
 
-## 6. State Management & Incremental Synchronization
+## 6. Resilience, Concurrency & Quality Controls
 
-To support incremental updates without reprocessing 12,000+ trials daily, state is tracked locally in SQLite (`tracker.db`).
-
-### 6.1 Database Schema
-
-```sql
-CREATE TABLE IF NOT EXISTS trials (
-    ct_number TEXT PRIMARY KEY,
-    status TEXT NOT NULL,           -- 'PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'UPDATE_PENDING'
-    retry_count INTEGER DEFAULT 0,
-    last_publish_date TEXT,          -- ISO timestamp or DD/MM/YYYY from API
-    last_fetched_at TEXT,            -- ISO timestamp when locally processed
-    error_message TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_trials_status ON trials(status);
-
-CREATE TABLE IF NOT EXISTS pipeline_runs (
-    run_id TEXT PRIMARY KEY,
-    run_type TEXT NOT NULL,          -- 'INCREMENTAL', 'FULL', 'SINGLE'
-    started_at TEXT NOT NULL,
-    completed_at TEXT,
-    status TEXT NOT NULL,           -- 'RUNNING', 'COMPLETED', 'FAILED'
-    trials_discovered INTEGER DEFAULT 0,
-    trials_processed INTEGER DEFAULT 0,
-    trials_succeeded INTEGER DEFAULT 0,
-    trials_failed INTEGER DEFAULT 0
-);
-```
-
-### 6.2 The Daily Incremental Workflow
-
-```mermaid
-sequenceDiagram
-    participant Orch as Main Orchestrator
-    participant API as CTIS Search API
-    participant DB as SQLite (tracker.db)
-    participant Pool as ThreadPoolExecutor
-    participant Retr as CTIS Retrieve API
-    participant Disk as Local Storage (./data/)
-
-    Orch->>DB: Record new run in pipeline_runs
-    loop Fetch pages 1, 2, ...
-        Orch->>API: POST /search (sort: decisionDate DESC, page=N, size=100)
-        API-->>Orch: Return records in data[]
-        Orch->>Orch: Parse dates (lastPublicationUpdate / decisionDateOverall)
-        alt Date < (Now - LookbackDays)
-            Orch->>Orch: Early Break: reached threshold
-        else Valid Date in Window
-            Orch->>DB: Compare ctNumber and publish date
-            alt New ctNumber
-                DB-->>DB: Insert as PENDING
-            else Existing ctNumber with newer publish date
-                DB-->>DB: Update to UPDATE_PENDING
-            end
-        end
-    end
-    Orch->>DB: Query all PENDING & UPDATE_PENDING trials
-    DB-->>Orch: Return queue of trials
-    Orch->>Pool: Submit tasks (max_workers=5)
-    loop Concurrently per Trial
-        Pool->>Retr: GET /retrieve/{ctNumber}
-        Retr-->>Pool: Raw Trial JSON
-        Pool->>Pool: Validate & Split into 6 JSONs
-        Pool->>Disk: Write ./data/{ctNumber}/*.json
-        Pool->>DB: Update status to SUCCESS, retry_count=0
-    end
-    Orch->>DB: Finalize pipeline_runs record
-```
-
-#### Early Termination Optimization:
-Because the Search API returns items sorted in descending date order, the orchestrator checks the dates on each page. As soon as all records on a page are older than `datetime.utcnow() - timedelta(days=lookback_days)` (default 7 days), the search loop halts immediately. This keeps incremental runs fast (typically 1–2 pages) and avoids unnecessary API traffic.
-
----
-
-## 7. Resilience, Concurrency & Quality Controls
-
-### 7.1 Concurrency & Rate Limiting
-* **Thread Pool:** Use `concurrent.futures.ThreadPoolExecutor(max_workers=5)`. Do not exceed 5 concurrent requests to avoid triggering gateway DDoS protections.
-* **Jittered Exponential Backoff:** On HTTP 429 (Too Many Requests), 502/503/504, or network timeout:
+### 6.1 Connection Pooling & Rate Limiting
+* **Thread Pool:** Uses `concurrent.futures.ThreadPoolExecutor(max_workers=5)`.
+* **Connection Pool:** Uses persistent `httpx.Client` with HTTP keep-alive, connection limits, and polite delay pacing (`0.05s`) between requests.
+* **Jittered Exponential Backoff:** On HTTP 429, 502/503/504, or network timeout:
   $$\text{wait\_time} = 2^{\text{attempt}} + \text{uniform}(0.1, 1.0)$$
-  Perform up to 3 retries per trial request.
 
-### 7.2 Schema Validation vs. Resilient Evolution
-* Clinical trials frequently contain optional or evolving fields depending on study phase and participating member states.
-* **Validation Strategy:**
-  1. Validate that the root object contains `ctNumber` matching the requested ID.
-  2. Validate that `authorizedApplication` is a dictionary and contains `authorizedPartI`.
-  3. For sub-models, allow extra fields (`extra = "allow"` or `extra = "ignore"` in Pydantic V2) to prevent pipeline failures caused by benign regulatory schema updates.
+### 6.2 Schema Validation vs. Resilient Evolution
+* **Defensive Extractors:** `_safe_dict()` and `_safe_list()` protect against unexpected null or type shifts.
+* **Pydantic V2 Models:** Built with `model_config = ConfigDict(extra="allow")` so newly introduced regulatory fields pass validation without errors.
 
-### 7.3 Quarantine Mechanism
-* When a retrieve response fails critical validation (e.g. invalid JSON, missing critical keys, unexpected structure):
-  1. Write the raw response to `./quarantine/{ctNumber}_{timestamp}.json`.
-  2. Write an accompanying error file `./quarantine/{ctNumber}_{timestamp}.error.log` with the stack trace.
-  3. Increment `retry_count` in SQLite.
-  4. If `retry_count >= 3`, mark status as `FAILED` and log an alert.
+### 6.3 Strict All-or-Nothing Storage Verification
+* Before updating state to `SUCCESS`, `storage.py` verifies that **all 6 files** were written/uploaded and that each file size is strictly greater than zero bytes (`all(save_results.values())`). If any file fails, the trial status is reverted to retry/quarantine.
+
+### 6.4 Storage Security
+* **S3 Server-Side Encryption:** All uploads enforce `ServerSideEncryption="AES256"`.
+* **Audit Metadata Tags:** Direct injection of `ct-number`, `ingested-at`, and `filename` into S3 object user metadata for auditing.
+
+### 6.5 Quarantine Mechanism
+* When validation or payload extraction fails:
+  1. Raw payload is saved to `./quarantine/{ctNumber}_{timestamp}.json`.
+  2. Complete stack trace is written to `./quarantine/{ctNumber}_{timestamp}.error.log`.
+  3. Status is recorded as `FAILED` with retry tracking.
+
+### 6.6 Graceful Shutdown & Log Rotation
+* Intercepts `SIGINT` and `SIGTERM` signals, letting active workers finish writing and commit state before exiting.
+* Limits log files via `RotatingFileHandler` (10 MB max, 5 backup files).
 
 ---
 
-## 8. Application Code Structure (Scaffolding)
-
-Organize the implementation into the following modular package:
+## 7. Application Code Structure
 
 ```text
 eu_clinical_trial/
 ├── data/                             # Ingested trial JSONs (./data/{ctNumber}/)
 ├── quarantine/                       # Malformed or failed trial payloads
-├── logs/                             # Execution and error logs
+├── logs/                             # Execution and error logs (rotating)
 ├── tracker.db                        # Local SQLite state tracking database
 ├── requirements.txt                  # Python dependencies
+├── Dockerfile                        # Multi-stage production container
+├── docker-compose.yml                # Multi-process container orchestration
+├── crontab                           # Scheduled cron jobs for new and update syncs
+├── entrypoint.sh                     # Container initialization and process dispatch
+├── .env                              # Secrets and runtime configuration
+├── .env.example                      # Configuration template
 ├── ctis_etl/
 │   ├── __init__.py
-│   ├── config.py                     # Configuration, paths, timeouts, retry limits
-│   ├── database.py                   # SQLite connection, migrations, and CRUD ops
-│   ├── api_client.py                 # HTTP requests, pagination, and retry logic
-│   ├── models.py                     # Pydantic validation models
-│   ├── parser.py                     # JSON splitting logic into 6 domain files
-│   ├── storage.py                    # Atomic file writing & quarantine handlers
-│   └── main.py                       # CLI entry point and execution orchestrator
+│   ├── config.py                     # Environment variables, backend switches, timeouts
+│   ├── database.py                   # SQLite (WAL) & DynamoDB with stale job reset
+│   ├── api_client.py                 # Persistent httpx client, pooling, and backoff
+│   ├── models.py                     # Resilient Pydantic models (extra="allow")
+│   ├── parser.py                     # Safe JSON splitting into 6 domain files
+│   ├── storage.py                    # Atomic local write & S3 AES-256 upload
+│   └── main.py                       # CLI entry point, signal handling, and modes
+└── docs/                             # Comprehensive technical documentation
 ```
 
-### 8.1 Required Dependencies (`requirements.txt`)
+### 7.1 Required Dependencies (`requirements.txt`)
 ```text
 httpx>=0.27.0
 pydantic>=2.6.0
 tenacity>=8.2.0
+python-dotenv>=1.0.0
+boto3>=1.34.0
+botocore>=1.34.0
 ```
 
-### 8.2 CLI Interface (`ctis_etl/main.py`)
-Support flexible execution modes via `argparse`:
+---
+
+## 8. CLI Command Dispatches
+
+The orchestrator (`ctis_etl/main.py`) supports 7 distinct operational modes:
+
+| Mode | Command | Description |
+| :--- | :--- | :--- |
+| **Health Check** | `python -m ctis_etl.main --mode check` | Runs pre-flight diagnostics across API, storage, and database. |
+| **Historical** | `python -m ctis_etl.main --mode historical --workers 5` | Full backfill of all historical trials across all search pages. |
+| **New Trials** | `python -m ctis_etl.main --mode new --lookback-days 7` | Queries and ingests only newly registered trials within the window. |
+| **Updates** | `python -m ctis_etl.main --mode updates --lookback-days 7` | Queries and updates existing trials with newer publication dates. |
+| **Incremental** | `python -m ctis_etl.main --mode incremental --lookback-days 7` | Combined run processing both new and updated trials. |
+| **Single Trial** | `python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00` | Ingests or re-syncs a single specific clinical trial ID. |
+| **Retry Failed** | `python -m ctis_etl.main --mode retry-failed` | Retries all previously quarantined or failed trials. |
+
+---
+
+## 9. Production Docker Deployment & Automation
+
+The pipeline runs inside Docker with automated cron scheduling:
 
 ```bash
-# Run standard incremental daily synchronization (last 7 days)
-python -m ctis_etl.main --mode incremental --lookback-days 7
+# 1. Start pipeline container in detached mode
+docker compose up -d
 
-# Run full historical backfill
-python -m ctis_etl.main --mode full
+# 2. View streaming logs
+docker compose logs -f
 
-# Process or re-process a specific trial ID
-python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00
-
-# Retry previously failed trials
-python -m ctis_etl.main --mode retry-failed
+# 3. Run diagnostic check inside container
+docker compose exec ctis-etl python -m ctis_etl.main --mode check
 ```
 
----
-
-## 9. Testing & Verification Runbook
-
-Follow this checklist before running production pipelines:
-
-1. **API Connectivity Test:**
-   Execute a lightweight test query against `POST /ctis-public-api/search` with `"page": 1` and `"size": 2` to confirm HTTP 200 and receipt of valid records.
-2. **Single Trial Extraction Test:**
-   Fetch `2026-527084-15-00` using `--mode single`. Confirm all 6 files are created in `./data/2026-527084-15-00/` and that JSON structures are well-formed.
-3. **Idempotency Test:**
-   Re-run `--mode single --ct-number 2026-527084-15-00`. Verify that the database marks it unchanged and files are safely overwritten without corruption.
-4. **Quarantine Handling Test:**
-   Simulate a malformed trial retrieve response and confirm that the record is routed to `./quarantine/` with status `FAILED` in SQLite.
-5. **Incremental Lookback Test:**
-   Run `--mode incremental --lookback-days 3`. Verify that search pagination halts as soon as records exceed the 3-day window.
-
----
-
-## 10. Future Cloud Roadmap (AWS Migration Readiness)
-
-The local pipeline design maintains clean decoupling boundaries to make eventual AWS migration straightforward:
-
-| Local Component | Cloud Counterpart | Migration Strategy |
-| :--- | :--- | :--- |
-| `storage.py` (Local files) | **Amazon S3** (`s3://ctis-trials/{ctNumber}/`) | Swap local file writes with `boto3.client('s3').put_object`. |
-| `database.py` (`tracker.db`) | **Amazon DynamoDB** or **Amazon RDS** | Replace SQLite queries with DynamoDB PutItem / UpdateItem. |
-| Quarantine directory | **S3 Quarantine Bucket + SQS DLQ** | Write invalid payloads to an S3 DLQ prefix with CloudWatch alerts. |
-| Error logging | **AWS CloudWatch & SNS** | Route error-level logs to SNS email/Slack alerts. |
-| Local Process / Cron | **AWS ECS Fargate / Lambda & EventBridge** | Containerize Docker image, schedule daily via Amazon EventBridge. |
-
----
-
-*End of Document. Implementation should strictly adhere to the schemas, endpoints, and error-handling protocols specified above.*
-
+### Automated Scheduling Breakdown (`crontab`):
+* **On Container Startup:** Launches background historical backfill (`--mode historical`).
+* **Every 6 Hours (`0 */6 * * *`):** Executes new trials synchronization (`--mode new --lookback-days 7`).
+* **Daily at 02:00 AM UTC (`0 2 * * *`):** Executes update synchronization (`--mode updates --lookback-days 7`).
