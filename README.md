@@ -120,7 +120,27 @@ STATE_BACKEND=dynamodb
 
 The pipeline provides 3 dedicated processes along with utility commands to manage extraction, incremental sync, and backfilling.
 
-### 4.1 CLI Commands Quick Reference Table
+### 4.1 Quick Make Shortcuts (Makefile)
+
+A convenient [Makefile](file:///d:/Workspace/eu_clinical_trial/Makefile) is provided so you do not need to type long Python commands:
+
+| Shortcut | What it does | Long Python Equivalent |
+| :--- | :--- | :--- |
+| `make check` | Run pre-flight diagnostic check (5/5 tests) | `python -m ctis_etl.main --mode check` |
+| `make status` | Generate & print status report + S3 browser links | `python -m ctis_etl.main --mode status` |
+| `make view-db` | Pretty-print local SQLite database in console | `python view_db.py` |
+| `make incremental` | Run 7-day incremental sync (new + updates) | `python -m ctis_etl.main --mode incremental --lookback-days 7` |
+| `make new` | Ingest new trials from last 7 days | `python -m ctis_etl.main --mode new --lookback-days 7` |
+| `make updates` | Ingest updated/amended trials from last 7 days | `python -m ctis_etl.main --mode updates --lookback-days 7` |
+| `make historical` | Start full historical catalog backfill | `python -m ctis_etl.main --mode historical --workers 5` |
+| `make single CT=<ID>` | Ingest a single trial (e.g. `make single CT=2026-527084-15-00`) | `python -m ctis_etl.main --mode single --ct-number <ID>` |
+| `make retry` | Retry and re-queue failed trials | `python -m ctis_etl.main --mode retry-failed` |
+| `make docker-up` | Start background Docker container with cron | `docker compose up -d` |
+| `make docker-logs` | Stream live Docker container logs | `docker compose logs -f` |
+
+---
+
+### 4.2 CLI Commands Reference Table
 
 | Objective | Command | Description |
 | :--- | :--- | :--- |
@@ -128,6 +148,7 @@ The pipeline provides 3 dedicated processes along with utility commands to manag
 | **Process 2: Brand New Trials** | `python -m ctis_etl.main --mode new --lookback-days 7` | Checks recently published trials and ingests only ones not yet in the DB. |
 | **Process 3: Updates & Amendments** | `python -m ctis_etl.main --mode updates --lookback-days 7` | Detects modified/amended trials and updates their dossiers in S3 & DynamoDB. |
 | **Combined Incremental Sync** | `python -m ctis_etl.main --mode incremental --lookback-days 7` | Runs both Process 2 (New) and Process 3 (Updates) in a single pass. |
+| **Live Status & URLs** | `python -m ctis_etl.main --mode status` | Prints metrics and generates 7-day browser URLs. |
 | **Single Trial Ingestion** | `python -m ctis_etl.main --mode single --ct-number <ID>` | Ingests a single specified trial dossier immediately. |
 | **Retry Failed Trials** | `python -m ctis_etl.main --mode retry-failed` | Re-queues and retries trials previously flagged with `FAILED` status. |
 | **Diagnostic Pre-flight Check** | `python -m ctis_etl.main --mode check` | Validates CTIS API, S3 bucket, DynamoDB, SQLite, and local disk permissions. |
