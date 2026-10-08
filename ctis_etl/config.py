@@ -71,6 +71,19 @@ STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "s3").lower()  # 's3', 'local', o
 STATE_BACKEND = os.getenv("STATE_BACKEND", "dynamodb").lower()  # 'dynamodb', 'sqlite', or 'both'
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# Production Resilience & Network Constants
+CONNECT_TIMEOUT = float(os.getenv("CONNECT_TIMEOUT", "10.0"))
+READ_TIMEOUT = float(os.getenv("READ_TIMEOUT", "30.0"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+REQUEST_DELAY_SECONDS = float(os.getenv("REQUEST_DELAY_SECONDS", "0.1"))
+
+# Log Rotation & Disk Safety
+LOG_FILE_MAX_BYTES = int(os.getenv("LOG_FILE_MAX_BYTES", str(10 * 1024 * 1024)))  # 10 MB
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+
+# S3 Security
+S3_SERVER_SIDE_ENCRYPTION = os.getenv("S3_SERVER_SIDE_ENCRYPTION", "AES256")
+
 # Default HTTP Headers
 DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

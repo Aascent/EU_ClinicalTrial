@@ -26,20 +26,55 @@ class CTISNotFoundError(CTISAPIError):
 
 
 class CTISClient:
-    """Robust client interacting with CTIS Public Search & Retrieve APIs."""
+    """Robust client interacting with CTIS Public Search & Retrieve APIs.
+
+    Uses persistent httpx connection pooling when available, with resilient urllib fallback.
+    """
 
     def __init__(
         self,
         base_url: Optional[str] = None,
-        max_retries: int = 3,
-        connect_timeout: float = 10.0,
-        read_timeout: float = 30.0,
+        max_retries: int = config.MAX_RETRIES,
+        connect_timeout: float = config.CONNECT_TIMEOUT,
+        read_timeout: float = config.READ_TIMEOUT,
+        request_delay: float = config.REQUEST_DELAY_SECONDS,
     ) -> None:
         self.base_url = (base_url or config.CTIS_API_BASE_URL).rstrip("/")
         self.search_url = f"{self.base_url}/search"
         self.retrieve_url = f"{self.base_url}/retrieve"
         self.max_retries = max_retries
-        self.timeout = read_timeout
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
+        self.request_delay = request_delay
+
+        # Try initializing httpx Client with connection pooling
+        self._httpx_client = None
+        try:
+            import httpx
+            self._httpx_client = httpx.Client(
+                timeout=httpx.Timeout(timeout=read_timeout, connect=connect_timeout),
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50, keepalive_expiry=30.0),
+                headers=config.DEFAULT_HEADERS,
+                follow_redirects=True,
+            )
+            logger.debug("CTISClient initialized with persistent httpx connection pool.")
+        except ImportError:
+            logger.debug("httpx not available; falling back to urllib.request.")
+
+    def close(self) -> None:
+        """Closes underlying HTTP client connection pool if present."""
+        if self._httpx_client is not None:
+            try:
+                self._httpx_client.close()
+            except Exception:
+                pass
+            self._httpx_client = None
+
+    def __enter__(self) -> CTISClient:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
     def _execute_request_with_retry(
         self,
@@ -47,29 +82,62 @@ class CTISClient:
         method: str = "GET",
         payload: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Executes an HTTP request with exponential backoff and jitter."""
+        """Executes an HTTP request with connection pooling, exponential backoff, and jitter."""
+        if self.request_delay > 0:
+            time.sleep(self.request_delay)
+
         data_bytes = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         for attempt in range(1, self.max_retries + 1):
-            req = urllib.request.Request(
-                url,
-                data=data_bytes,
-                headers=config.DEFAULT_HEADERS,
-                method=method,
-            )
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as response:
-                    status = response.status
-                    content_type = response.headers.get("Content-Type", "")
+                # Path A: httpx with connection pooling
+                if self._httpx_client is not None:
+                    import httpx
+                    try:
+                        if method == "POST":
+                            resp = self._httpx_client.post(url, json=payload)
+                        else:
+                            resp = self._httpx_client.get(url)
 
+                        if resp.status_code in (429, 500, 502, 503, 504):
+                            raise httpx.HTTPStatusError(
+                                f"Server returned {resp.status_code}",
+                                request=resp.request,
+                                response=resp
+                            )
+                        resp.raise_for_status()
+
+                        ctype = resp.headers.get("content-type", "")
+                        if "application/json" not in ctype and not ctype.startswith("application/"):
+                            raise CTISAPIError(f"Unexpected non-JSON response from {url}: {resp.text[:200]}")
+
+                        return resp.json()
+
+                    except (httpx.HTTPStatusError, httpx.RequestError) as http_e:
+                        status = getattr(getattr(http_e, "response", None), "status_code", None)
+                        if attempt == self.max_retries:
+                            raise CTISAPIError(f"Request failed after {attempt} attempts for {url}: {http_e}") from http_e
+
+                        sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
+                        logger.warning(f"HTTP {status or 'net'} error for {url}. Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...")
+                        time.sleep(sleep_time)
+                        continue
+
+                # Path B: Standard urllib fallback
+                req = urllib.request.Request(
+                    url,
+                    data=data_bytes,
+                    headers=config.DEFAULT_HEADERS,
+                    method=method,
+                )
+                with urllib.request.urlopen(req, timeout=self.read_timeout) as response:
+                    content_type = response.headers.get("Content-Type", "")
                     if "application/json" not in content_type and not content_type.startswith("application/"):
-                        # Handle gateway returning HTML error page with 200 OK
                         body = response.read().decode("utf-8", errors="replace")
                         raise CTISAPIError(f"Unexpected non-JSON response from {url}: {body[:200]}")
 
                     raw_bytes = response.read()
-                    data = json.loads(raw_bytes.decode("utf-8"))
-                    return data
+                    return json.loads(raw_bytes.decode("utf-8"))
 
             except urllib.error.HTTPError as http_err:
                 status = http_err.code

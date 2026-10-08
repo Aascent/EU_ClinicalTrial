@@ -13,19 +13,45 @@ from typing import List, Optional
 from ctis_etl import config, database, parser, storage
 from ctis_etl.api_client import CTISClient, CTISNotFoundError
 
-# Configure logging
+from logging.handlers import RotatingFileHandler
+import re
+import signal
+import threading
+
+# Global shutdown event for graceful container termination
+_shutdown_event = threading.Event()
+
+
+def _handle_shutdown_signal(signum: int, frame: Any) -> None:
+    sig_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+    logger.warning(f"Shutdown signal {sig_name} received. Finishing active tasks and stopping gracefully...")
+    _shutdown_event.set()
+
+
+try:
+    signal.signal(signal.SIGINT, _handle_shutdown_signal)
+    signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+except (ValueError, AttributeError):
+    pass
+
+# Configure rotating file logging for production disk safety
+rotating_handler = RotatingFileHandler(
+    config.LOGS_DIR / "ctis_etl.log",
+    maxBytes=config.LOG_FILE_MAX_BYTES,
+    backupCount=config.LOG_BACKUP_COUNT,
+    encoding="utf-8",
+)
+
 logging.basicConfig(
     level=getattr(logging, config.LOG_LEVEL, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(config.LOGS_DIR / "ctis_etl.log", encoding="utf-8"),
+        rotating_handler,
     ],
 )
 logger = logging.getLogger("ctis_etl")
 
-
-import re
 
 def parse_ctis_date(date_str: Optional[str]) -> Optional[datetime]:
     """Parses date string from Search API (e.g. '07/10/2026', 'HU: 07/10/2026', or ISO format)."""
@@ -50,6 +76,11 @@ def process_single_trial(
     storage_backend: Optional[str] = None,
 ) -> bool:
     """Retrieves, validates, parses, stores a single trial and updates state DB."""
+    if _shutdown_event.is_set():
+        logger.info(f"Skipping {ct_number} due to active shutdown signal.")
+        return False
+
+    database.mark_processing(ct_number)
     logger.info(f"Processing trial: {ct_number}")
     raw_payload = None
     try:
@@ -492,6 +523,9 @@ def main() -> None:
     args = parser_cli.parse_args()
     client = CTISClient(base_url=config.CTIS_API_BASE_URL)
     database.init_sqlite_db()
+    stale_count = database.reset_stale_processing(timeout_minutes=15)
+    if stale_count > 0:
+        logger.info(f"Automatically recovered {stale_count} stale trials left from interrupted runs.")
 
     if args.mode == "check":
         run_check(client)

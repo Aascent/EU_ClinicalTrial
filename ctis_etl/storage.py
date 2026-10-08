@@ -76,7 +76,7 @@ def save_trial_files(
                 with open(temp_path, "w", encoding="utf-8") as f:
                     json.dump(payload, f, indent=2, ensure_ascii=False)
                 temp_path.replace(file_path)
-                results[f"local:{filename}"] = True
+                results[f"local:{filename}"] = file_path.stat().st_size > 0
             except Exception as e:
                 logger.error(f"Failed writing local file {file_path}: {e}")
                 results[f"local:{filename}"] = False
@@ -89,16 +89,26 @@ def save_trial_files(
             if not save_local:
                 return save_trial_files(ct_number, parsed_files, backend="local")
         else:
+            now_iso = datetime.now(timezone.utc).isoformat()
             for filename, payload in parsed_files.items():
                 s3_key = f"{config.S3_PREFIX}{ct_number}/{filename}"
                 try:
                     payload_bytes = json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
-                    s3.put_object(
-                        Bucket=config.S3_BUCKET_NAME,
-                        Key=s3_key,
-                        Body=payload_bytes,
-                        ContentType="application/json",
-                    )
+                    put_kwargs = {
+                        "Bucket": config.S3_BUCKET_NAME,
+                        "Key": s3_key,
+                        "Body": payload_bytes,
+                        "ContentType": "application/json",
+                        "Metadata": {
+                            "ct-number": ct_number,
+                            "ingested-at": now_iso,
+                            "filename": filename,
+                        },
+                    }
+                    if config.S3_SERVER_SIDE_ENCRYPTION:
+                        put_kwargs["ServerSideEncryption"] = config.S3_SERVER_SIDE_ENCRYPTION
+
+                    s3.put_object(**put_kwargs)
                     results[f"s3:{filename}"] = True
                 except Exception as e:
                     logger.error(f"Failed uploading to s3://{config.S3_BUCKET_NAME}/{s3_key}: {e}")

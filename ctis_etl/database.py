@@ -23,12 +23,16 @@ def get_dynamodb_table():
 
     try:
         import boto3
+        from botocore.config import Config
         session = boto3.Session(
             aws_access_key_id=config.AWS_ACCESS_KEY_ID or None,
             aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY or None,
             region_name=config.AWS_REGION or None,
         )
-        dynamodb = session.resource("dynamodb")
+        dynamodb = session.resource(
+            "dynamodb",
+            config=Config(retries={"max_attempts": 4, "mode": "adaptive"})
+        )
         _dynamodb_table = dynamodb.Table(config.DYNAMODB_TABLE_NAME)
         return _dynamodb_table
     except ImportError:
@@ -43,6 +47,50 @@ def init_sqlite_db() -> None:
     """Creates SQLite tracking tables and indexes if they do not exist."""
     with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
         conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=30000;")
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS trials (
+                ct_number TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                retry_count INTEGER DEFAULT 0,
+                last_publish_date TEXT,
+                last_fetched_at TEXT,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trials_status ON trials(status);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trials_updated ON trials(updated_at);")
+
+
+def mark_processing(ct_number: str) -> None:
+    """Marks trial as currently in-flight to prevent duplicate worker pickup."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    init_sqlite_db()
+    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        conn.execute(
+            "UPDATE trials SET status = 'PROCESSING', updated_at = ? WHERE ct_number = ?",
+            (now_iso, ct_number)
+        )
+        conn.commit()
+
+
+def reset_stale_processing(timeout_minutes: int = 15) -> int:
+    """Recovers trials left in PROCESSING state if a container or worker crashed."""
+    init_sqlite_db()
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE trials SET status = 'PENDING', updated_at = ? WHERE status = 'PROCESSING' AND updated_at < ?",
+            (now_iso, cutoff)
+        )
+        conn.commit()
+        return cursor.rowcount
         conn.execute("PRAGMA busy_timeout=15000;")
         cursor = conn.cursor()
         cursor.execute("""
