@@ -13,7 +13,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 BRONZE_DIR = DATA_DIR / "bronze"
 SILVER_DIR = DATA_DIR / "silver"
-GOLD_DIR = DATA_DIR / "gold"
 QUARANTINE_DIR = BASE_DIR / "quarantine"
 LOGS_DIR = BASE_DIR / "logs"
 SQLITE_DB_PATH = BASE_DIR / "tracker.db"
@@ -22,7 +21,6 @@ SQLITE_DB_PATH = BASE_DIR / "tracker.db"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BRONZE_DIR.mkdir(parents=True, exist_ok=True)
 SILVER_DIR.mkdir(parents=True, exist_ok=True)
-GOLD_DIR.mkdir(parents=True, exist_ok=True)
 QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -61,11 +59,9 @@ S3_PREFIX = os.getenv("S3_PREFIX", "ctis/").strip("/")
 if S3_PREFIX:
     S3_PREFIX += "/"
 
-# Medallion Tier S3 Prefixes
+# S3 Tier Prefixes
 S3_BRONZE_PREFIX = f"{S3_PREFIX}bronze/"
 S3_SILVER_PREFIX = f"{S3_PREFIX}silver/"
-S3_GOLD_PREFIX = f"{S3_PREFIX}gold/"
-ENABLE_MEDALLION = os.getenv("ENABLE_MEDALLION", "true").lower() in ("true", "1", "yes")
 
 # Amazon DynamoDB Configuration
 DYNAMODB_TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME") or os.getenv("TABLE_NAME", "EU_Clinical")

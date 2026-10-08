@@ -88,20 +88,18 @@ def save_trial_files(
     ct_number: str,
     parsed_files: Dict[str, Any],
     raw_payload: Optional[Dict[str, Any]] = None,
-    gold_record: Optional[Dict[str, Any]] = None,
     backend: Optional[str] = None,
 ) -> Dict[str, bool]:
-    """Persists trial entities across the Medallion architecture (Bronze, Silver, Gold).
+    """Persists trial entities across Bronze (raw) and Silver (6 domain files) tiers.
 
     Args:
         ct_number: Trial identifier (e.g. '2026-527084-15-00')
         parsed_files: Silver tier dictionary of filename -> domain JSON payload (6 files)
-        raw_payload: Bronze tier unmodified API response payload
-        gold_record: Gold tier flattened, business-ready analytical summary
+        raw_payload: Bronze tier unmodified API response payload (raw.json)
         backend: Storage backend ('local', 's3', or 'both'). Defaults to config.STORAGE_BACKEND.
 
     Returns:
-        Dict indicating success status for each persisted entity across tiers.
+        Dict indicating success status for each persisted entity.
     """
     backend = (backend or config.STORAGE_BACKEND).lower()
     results: Dict[str, bool] = {}
@@ -111,7 +109,7 @@ def save_trial_files(
 
     # Local Directory Persistence
     if save_local:
-        # 1. Bronze Tier (Raw response)
+        # 1. Bronze Tier (Raw untouched response)
         if raw_payload is not None:
             bronze_path = config.BRONZE_DIR / ct_number / "raw.json"
             results["local:bronze:raw.json"] = _write_local_json(bronze_path, raw_payload)
@@ -121,14 +119,9 @@ def save_trial_files(
             # Standard silver directory
             silver_path = config.SILVER_DIR / ct_number / filename
             results[f"local:silver:{filename}"] = _write_local_json(silver_path, payload)
-            # Legacy/direct directory for backward compatibility
+            # Direct directory for convenience / backward compatibility
             direct_path = config.DATA_DIR / ct_number / filename
             _write_local_json(direct_path, payload)
-
-        # 3. Gold Tier (Business-ready analytical summary)
-        if gold_record is not None:
-            gold_path = config.GOLD_DIR / ct_number / "trial_analytics.json"
-            results["local:gold:trial_analytics.json"] = _write_local_json(gold_path, gold_record)
 
     # AWS S3 Persistence
     if save_s3:
@@ -140,7 +133,6 @@ def save_trial_files(
                     ct_number=ct_number,
                     parsed_files=parsed_files,
                     raw_payload=raw_payload,
-                    gold_record=gold_record,
                     backend="local",
                 )
         else:
@@ -154,7 +146,7 @@ def save_trial_files(
                     config.S3_BUCKET_NAME,
                     bronze_key,
                     raw_payload,
-                    {"ct-number": ct_number, "layer": "bronze", "ingested-at": now_iso},
+                    {"ct-number": ct_number, "filename": "raw.json", "ingested-at": now_iso},
                 )
 
             # 2. Silver Tier Uploads
@@ -165,9 +157,9 @@ def save_trial_files(
                     config.S3_BUCKET_NAME,
                     silver_key,
                     payload,
-                    {"ct-number": ct_number, "layer": "silver", "filename": filename, "ingested-at": now_iso},
+                    {"ct-number": ct_number, "filename": filename, "ingested-at": now_iso},
                 )
-                # Legacy root prefix upload
+                # Direct root prefix upload
                 legacy_key = f"{config.S3_PREFIX}{ct_number}/{filename}"
                 _upload_s3_json(
                     s3,
@@ -175,17 +167,6 @@ def save_trial_files(
                     legacy_key,
                     payload,
                     {"ct-number": ct_number, "filename": filename, "ingested-at": now_iso},
-                )
-
-            # 3. Gold Tier Upload
-            if gold_record is not None:
-                gold_key = f"{config.S3_GOLD_PREFIX}{ct_number}/trial_analytics.json"
-                results["s3:gold:trial_analytics.json"] = _upload_s3_json(
-                    s3,
-                    config.S3_BUCKET_NAME,
-                    gold_key,
-                    gold_record,
-                    {"ct-number": ct_number, "layer": "gold", "ingested-at": now_iso},
                 )
 
     return results

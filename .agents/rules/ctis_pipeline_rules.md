@@ -20,6 +20,6 @@ globs: ctis_etl/**, docs/**, Dockerfile, entrypoint.sh, crontab
    - Quarantine malformed or failed payloads into `./quarantine/{ctNumber}_{timestamp}.json` with error logs.
    - Keep `.env` strictly ignored by Git (`.gitignore`).
 
-4. **Medallion Architecture Consistency:**
-   - Always persist Bronze (`raw.json`), Silver (6 domain JSON files), and Gold (`trial_analytics.json`) across storage backends.
+4. **Storage Architecture Consistency:**
+   - Persist Bronze (`raw.json`) and Silver (6 domain JSON files) across storage backends without injecting internal layer tags into the JSON output.
 

@@ -122,30 +122,28 @@ The CTIS public platform exposes two key endpoints. **Both require standard brow
 
 ---
 
-## 4. Medallion Data Architecture (Bronze → Silver → Gold)
+## 4. Data Architecture: Bronze (Raw) & Silver (Curated) Tiers
 
-The pipeline organizes data into the industry-standard Medallion Architecture across both local disk and AWS S3:
+The pipeline organizes data into Bronze and Silver tiers across both local disk and AWS S3:
 
 ```text
 data/ (or s3://aascent-mindgram/ctis/)
 │
 ├── bronze/
 │   └── 2026-527084-15-00/
-│       └── raw.json                           # 🥉 Bronze: Raw untouched EMA CTIS API response
+│       └── raw.json                           # Bronze: Raw untouched EMA CTIS API response
 │
-├── silver/
-│   └── 2026-527084-15-00/
-│       ├── meta_data.json                     # 🥈 Silver: Status, regulatory dates, trial region, lineage
-│       ├── summary.json                       # 🥈 Silver: Identifiers, titles, sponsors, trial phase
-│       ├── full_trial_information.json        # 🥈 Silver: Complete scientific Part I protocol dossier
-│       ├── trial_documents.json               # 🥈 Silver: Public regulatory documents & UUID metadata
-│       ├── trial_results.json                 # 🥈 Silver: Trial outcome summaries & clinical reports
-│       └── locations_and_contact_points.json  # 🥈 Silver: Member states, trial sites, sponsor contacts
-│
-└── gold/
+└── silver/
     └── 2026-527084-15-00/
-        └── trial_analytics.json               # 🥇 Gold: Flattened dimensional summary for BI/analytics
+        ├── meta_data.json                     # Silver: Status, regulatory dates, trial region, lineage
+        ├── summary.json                       # Silver: Identifiers, titles, sponsors, trial phase
+        ├── full_trial_information.json        # Silver: Complete scientific Part I protocol dossier
+        ├── trial_documents.json               # Silver: Public regulatory documents & UUID metadata
+        ├── trial_results.json                 # Silver: Trial outcome summaries & clinical reports
+        └── locations_and_contact_points.json  # Silver: Member states, trial sites, sponsor contacts
 ```
+
+*(Note: The 6 domain JSON files are also written directly under `data/{ctNumber}/` for direct access).*
 
 ### 4.1 Bronze Layer (Raw Ingestion)
 * **Filename:** `raw.json`
@@ -163,17 +161,6 @@ The raw dossier is parsed into 6 discrete, well-structured domain files:
 | **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
 | **`trial_results.json`** | Root: `results` object | Clinical trial results and study reports (persisted as `{}` if none submitted yet). |
 | **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (member states, trial sites, organizations) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
-
-### 4.3 Gold Layer (Business Analytics & BI Consumption)
-* **Filename:** `trial_analytics.json`
-* **Purpose:** A single, high-performance, flattened tabular row containing all core analytical dimensions for immediate ingestion into Snowflake, BigQuery, DuckDB, Parquet, or BI tools (PowerBI/Tableau):
-  * **Clinical & Trial Metadata:** `ct_number`, `full_title`, `status`, `trial_phase_code`, `trial_phase_label`, `is_low_intervention`
-  * **Pharmacology:** `active_substances` (deduplicated array), `product_names`, `products_count`
-  * **Sponsors:** `sponsors`, `sponsor_types`
-  * **Scale & Geography:** `participating_countries`, `trial_sites_count`, `total_recruitment_subjects`
-  * **Therapeutics:** `medical_conditions`, `therapeutic_areas`, `primary_endpoints`
-  * **Counts & Completeness:** `inclusion_criteria_count`, `exclusion_criteria_count`, `documents_count`, `has_results`
-  * **Timelines:** `estimated_start_date`, `estimated_end_date`, `decision_date`, `publish_date`, `ingestion_timestamp`
 
 ---
 

@@ -17,16 +17,15 @@ This workspace contains a production ETL pipeline extracting EU CTIS clinical tr
    * **Missing Trials:** `GET /retrieve/{ctNumber}` returns `200 OK` with an empty dict `{}` for nonexistent trials; always verify `ctNumber` exists.
    * **Rate Limiting:** Never exceed 5 concurrent worker threads without explicit backoff.
 
-3. **Medallion Data Normalization Contracts:**
+3. **Data Normalization Contracts (Bronze & Silver):**
    * **Bronze Layer:** Exact unmodified API response: `raw.json` in `bronze/{ctNumber}/`.
-   * **Silver Layer:** 6 standardized domain JSON entities in `silver/{ctNumber}/`:
+   * **Silver Layer:** 6 standardized domain JSON entities in `silver/{ctNumber}/` (and `data/{ctNumber}/`):
      * `meta_data.json`
      * `summary.json`
      * `full_trial_information.json`
      * `trial_documents.json`
      * `trial_results.json`
      * `locations_and_contact_points.json`
-   * **Gold Layer:** Flattened, high-performance analytical row: `trial_analytics.json` in `gold/{ctNumber}/`.
 
 4. **Multi-Process Concurrency:**
    * Local SQLite operates with WAL mode (`PRAGMA journal_mode=WAL;`).
