@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 import sys
 import uuid
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from ctis_etl import config, database, parser, storage
 from ctis_etl.api_client import CTISClient, CTISNotFoundError
@@ -202,6 +202,22 @@ def _process_trial_queue(
     return succeeded, failed
 
 
+def _publish_report() -> Dict[str, Any]:
+    """Generates and uploads the public status report JSON and HTML dashboard to S3 and local disk."""
+    try:
+        report_urls = storage.publish_pipeline_status_report()
+        json_url = report_urls.get("json_browser_url")
+        html_url = report_urls.get("html_browser_url")
+        if json_url:
+            logger.info(f"Pipeline JSON Status URL: {json_url}")
+        if html_url:
+            logger.info(f"Pipeline Dashboard URL:   {html_url}")
+        return report_urls
+    except Exception as e:
+        logger.error(f"Failed publishing pipeline status report: {e}")
+        return {}
+
+
 def run_new_trials(
     client: CTISClient,
     lookback_days: int = 7,
@@ -232,6 +248,7 @@ def run_new_trials(
         failed=failed,
     )
     logger.info(f"[PROCESS 2 COMPLETED] New trials processed: {len(new_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    _publish_report()
 
 
 def run_updated_trials(
@@ -264,6 +281,7 @@ def run_updated_trials(
         failed=failed,
     )
     logger.info(f"[PROCESS 3 COMPLETED] Updated trials processed: {len(updates_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    _publish_report()
 
 
 def run_incremental(
@@ -296,6 +314,7 @@ def run_incremental(
         failed=failed,
     )
     logger.info(f"Incremental sync finished. Processed: {len(pending_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    _publish_report()
 
 
 def run_full(
@@ -402,6 +421,7 @@ def run_full(
         f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
         f"Skipped: {total_skipped}, Failed: {total_failed}"
     )
+    _publish_report()
 
 
 def run_check(client: CTISClient) -> None:
@@ -494,9 +514,9 @@ def main() -> None:
     parser_cli = argparse.ArgumentParser(description="EU CTIS Data Pipeline ETL CLI")
     parser_cli.add_argument(
         "--mode",
-        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed", "check"],
+        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed", "check", "status", "report"],
         default="incremental",
-        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed', 'check' (pre-flight diagnostics)",
+        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed', 'check' (pre-flight diagnostics), 'status' (print live summary & browser links)",
     )
     parser_cli.add_argument(
         "--lookback-days",
@@ -528,6 +548,25 @@ def main() -> None:
     stale_count = database.reset_stale_processing(timeout_minutes=15)
     if stale_count > 0:
         logger.info(f"Automatically recovered {stale_count} stale trials left from interrupted runs.")
+
+    if args.mode in ("status", "report"):
+        report = database.generate_pipeline_summary_report()
+        report_urls = storage.publish_pipeline_status_report(report)
+        print("\n=================================================================")
+        print("          EU CTIS Data Pipeline - Current Status Report          ")
+        print("=================================================================")
+        print(f"Total Trials Tracked: {report['overall_metrics']['total_trials_tracked']}")
+        print(f"Succeeded:            {report['overall_metrics']['succeeded']}")
+        print(f"Pending:              {report['overall_metrics']['pending']}")
+        print(f"Failed:               {report['overall_metrics']['failed']}")
+        print("-----------------------------------------------------------------")
+        if "json_browser_url" in report_urls:
+            print(f"Public JSON URL (Browser / App):\n{report_urls['json_browser_url']}\n")
+        if "html_browser_url" in report_urls:
+            print(f"Public HTML Dashboard (Browser):\n{report_urls['html_browser_url']}\n")
+        print(f"Local JSON File: {report_urls.get('local_json_path')}")
+        print("=================================================================\n")
+        sys.exit(0)
 
     if args.mode == "check":
         run_check(client)

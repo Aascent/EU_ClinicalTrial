@@ -336,3 +336,118 @@ def record_pipeline_run(
             (run_id, run_type, started_at, completed_at, status, discovered, processed, succeeded, failed),
         )
         conn.commit()
+
+
+def generate_pipeline_summary_report() -> Dict[str, Any]:
+    """Aggregates pipeline runs and trials tracking state into a comprehensive report dictionary."""
+    init_sqlite_db()
+    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # 1. Overall stats
+        cursor.execute("SELECT status, COUNT(*) as count FROM trials GROUP BY status")
+        status_counts = {row["status"]: row["count"] for row in cursor.fetchall()}
+        total_trials = sum(status_counts.values())
+
+        # 2. Runs by type
+        cursor.execute(
+            """
+            SELECT run_type,
+                   COUNT(*) as total_runs,
+                   COALESCE(SUM(trials_discovered), 0) as discovered,
+                   COALESCE(SUM(trials_processed), 0) as processed,
+                   COALESCE(SUM(trials_succeeded), 0) as succeeded,
+                   COALESCE(SUM(trials_failed), 0) as failed,
+                   MAX(started_at) as last_run_at
+            FROM pipeline_runs
+            GROUP BY run_type
+            """
+        )
+        runs_by_type = {}
+        for row in cursor.fetchall():
+            runs_by_type[row["run_type"]] = {
+                "total_runs": row["total_runs"],
+                "trials_discovered": row["discovered"],
+                "trials_processed": row["processed"],
+                "trials_succeeded": row["succeeded"],
+                "trials_failed": row["failed"],
+                "last_run_at": row["last_run_at"],
+            }
+
+        # 3. Daily activity breakdown
+        cursor.execute(
+            """
+            SELECT SUBSTR(started_at, 1, 10) as run_date,
+                   run_type,
+                   COUNT(*) as runs_count,
+                   COALESCE(SUM(trials_discovered), 0) as discovered,
+                   COALESCE(SUM(trials_processed), 0) as processed,
+                   COALESCE(SUM(trials_succeeded), 0) as succeeded,
+                   COALESCE(SUM(trials_failed), 0) as failed
+            FROM pipeline_runs
+            GROUP BY run_date, run_type
+            ORDER BY run_date DESC, run_type ASC
+            """
+        )
+        daily_activity = []
+        for row in cursor.fetchall():
+            daily_activity.append({
+                "date": row["run_date"],
+                "run_type": row["run_type"],
+                "runs_count": row["runs_count"],
+                "trials_discovered": row["discovered"],
+                "trials_processed": row["processed"],
+                "trials_succeeded": row["succeeded"],
+                "trials_failed": row["failed"],
+            })
+
+        # 4. Recent pipeline runs
+        cursor.execute(
+            """
+            SELECT run_id, run_type, started_at, completed_at, status,
+                   trials_discovered, trials_processed, trials_succeeded, trials_failed
+            FROM pipeline_runs
+            ORDER BY started_at DESC
+            LIMIT 15
+            """
+        )
+        recent_runs = [dict(row) for row in cursor.fetchall()]
+
+        # 5. Recently updated trials
+        cursor.execute(
+            """
+            SELECT ct_number, status, last_publish_date, last_fetched_at, updated_at, error_message
+            FROM trials
+            ORDER BY updated_at DESC
+            LIMIT 30
+            """
+        )
+        recent_trials = []
+        for row in cursor.fetchall():
+            d = dict(row)
+            d["s3_silver_prefix"] = f"{config.S3_SILVER_PREFIX}{d['ct_number']}/"
+            recent_trials.append(d)
+
+        return {
+            "title": "EU CTIS Clinical Trial Pipeline - Activity & Status Report",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "environment": {
+                "s3_bucket": config.S3_BUCKET_NAME,
+                "dynamodb_table": config.DYNAMODB_TABLE_NAME,
+                "storage_backend": config.STORAGE_BACKEND,
+                "state_backend": config.STATE_BACKEND,
+            },
+            "overall_metrics": {
+                "total_trials_tracked": total_trials,
+                "succeeded": status_counts.get("SUCCESS", 0),
+                "pending": status_counts.get("PENDING", 0),
+                "update_pending": status_counts.get("UPDATE_PENDING", 0),
+                "failed": status_counts.get("FAILED", 0),
+            },
+            "runs_by_type": runs_by_type,
+            "daily_activity": daily_activity,
+            "recent_pipeline_runs": recent_runs,
+            "recently_updated_trials": recent_trials,
+        }
+

@@ -64,7 +64,21 @@ def main():
             print(f"{rtype:<14} | {st:<10} | {disc:<10} | {proc:<10} | {succ:<10} | {fail:<8} | {start}")
 
     conn.close()
+
+    try:
+        from ctis_etl import storage
+        report_urls = storage.publish_pipeline_status_report()
+        if "json_browser_url" in report_urls:
+            print("\n[LIVE STATUS URLS - OPEN DIRECTLY IN BROWSER]")
+            print(f"JSON Status URL (7-day link):  {report_urls['json_browser_url']}")
+            if "html_browser_url" in report_urls:
+                print(f"HTML Dashboard  (7-day link):  {report_urls['html_browser_url']}")
+            print(f"Local JSON File:               {report_urls.get('local_json_path')}")
+    except Exception as e:
+        pass
+
     print("\n" + "=" * 110)
 
 if __name__ == "__main__":
     main()
+

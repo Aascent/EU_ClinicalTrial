@@ -185,3 +185,426 @@ def quarantine_payload(ct_number: str, raw_payload: Any, error_msg: str) -> Path
         logger.error(f"Failed writing to quarantine for {ct_number}: {e}")
 
     return json_path
+
+
+def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = None) -> str:
+    """Renders a self-contained, responsive HTML dashboard for the pipeline status report."""
+    metrics = report.get("overall_metrics", {})
+    runs_by_type = report.get("runs_by_type", {})
+    daily_activity = report.get("daily_activity", [])
+    recent_runs = report.get("recent_pipeline_runs", [])
+    recent_trials = report.get("recently_updated_trials", [])
+    env = report.get("environment", {})
+
+    target_json_url = json_url or "pipeline_status.json"
+    json_pretty_str = json.dumps(report, indent=2, ensure_ascii=False)
+
+    runs_by_type_rows = ""
+    for rtype, rdata in runs_by_type.items():
+        runs_by_type_rows += f"""
+        <tr>
+            <td><strong>{rtype}</strong></td>
+            <td>{rdata.get('total_runs', 0)}</td>
+            <td>{rdata.get('trials_discovered', 0)}</td>
+            <td>{rdata.get('trials_processed', 0)}</td>
+            <td style="color: #10b981; font-weight: 600;">{rdata.get('trials_succeeded', 0)}</td>
+            <td style="color: {'#ef4444' if rdata.get('trials_failed', 0) > 0 else '#64748b'};">{rdata.get('trials_failed', 0)}</td>
+            <td style="font-size: 0.85em; color: #64748b;">{rdata.get('last_run_at', '-')}</td>
+        </tr>
+        """
+
+    daily_rows = ""
+    for row in daily_activity:
+        daily_rows += f"""
+        <tr>
+            <td>{row.get('date')}</td>
+            <td><span class="badge badge-info">{row.get('run_type')}</span></td>
+            <td>{row.get('runs_count')}</td>
+            <td>{row.get('trials_discovered')}</td>
+            <td>{row.get('trials_processed')}</td>
+            <td style="color: #10b981; font-weight: 600;">{row.get('trials_succeeded')}</td>
+            <td style="color: {'#ef4444' if row.get('trials_failed', 0) > 0 else '#64748b'};">{row.get('trials_failed')}</td>
+        </tr>
+        """
+
+    recent_runs_rows = ""
+    for run in recent_runs:
+        st = run.get("status", "UNKNOWN")
+        st_badge = "badge-success" if st == "COMPLETED" else ("badge-warning" if st == "RUNNING" else "badge-danger")
+        recent_runs_rows += f"""
+        <tr>
+            <td style="font-family: monospace; font-size: 0.85em;">{run.get('run_id', '')[:8]}...</td>
+            <td><strong>{run.get('run_type')}</strong></td>
+            <td><span class="badge {st_badge}">{st}</span></td>
+            <td>{run.get('trials_discovered', 0)}</td>
+            <td>{run.get('trials_processed', 0)}</td>
+            <td style="color: #10b981;">{run.get('trials_succeeded', 0)}</td>
+            <td style="color: {'#ef4444' if run.get('trials_failed', 0) > 0 else '#64748b'};">{run.get('trials_failed', 0)}</td>
+            <td style="font-size: 0.85em; color: #64748b;">{run.get('started_at', '-')}</td>
+            <td style="font-size: 0.85em; color: #64748b;">{run.get('completed_at', '-')}</td>
+        </tr>
+        """
+
+    recent_trials_rows = ""
+    for tr in recent_trials:
+        tst = tr.get("status", "UNKNOWN")
+        badge = "badge-success" if tst == "SUCCESS" else ("badge-warning" if "PENDING" in tst else "badge-danger")
+        recent_trials_rows += f"""
+        <tr>
+            <td style="font-family: monospace; font-weight: 600;">{tr.get('ct_number')}</td>
+            <td><span class="badge {badge}">{tst}</span></td>
+            <td style="font-size: 0.85em; color: #475569;">{tr.get('last_publish_date', '-')}</td>
+            <td style="font-size: 0.85em; color: #475569;">{tr.get('last_fetched_at', '-')}</td>
+            <td style="font-family: monospace; font-size: 0.8em; color: #0284c7;">{tr.get('s3_silver_prefix', '-')}</td>
+        </tr>
+        """
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EU CTIS Pipeline - Live Activity & Audit Dashboard</title>
+    <style>
+        :root {{
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --border: #334155;
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            padding: 24px;
+            line-height: 1.5;
+        }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }}
+        h1 {{ font-size: 1.5rem; font-weight: 700; color: #fff; }}
+        .subtitle {{ font-size: 0.875rem; color: var(--text-muted); margin-top: 4px; }}
+        .meta-actions {{ display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }}
+        .btn {{
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            background: var(--accent);
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            cursor: pointer;
+            border: none;
+        }}
+        .btn:hover {{ opacity: 0.9; }}
+        .btn-outline {{
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid var(--border);
+        }}
+        .grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }}
+        .card {{
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }}
+        .card-label {{ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }}
+        .card-value {{ font-size: 2rem; font-weight: 700; margin-top: 8px; color: #fff; }}
+        .card-desc {{ font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }}
+        .section-title {{ font-size: 1.15rem; font-weight: 600; margin: 32px 0 16px 0; color: var(--accent); }}
+        .table-container {{
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow-x: auto;
+            margin-bottom: 24px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }}
+        th, td {{
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }}
+        th {{
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }}
+        tr:last-child td {{ border-bottom: none; }}
+        tr:hover td {{ background: rgba(255, 255, 255, 0.02); }}
+        .badge {{
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }}
+        .badge-success {{ background: rgba(16, 185, 129, 0.15); color: #34d399; }}
+        .badge-warning {{ background: rgba(245, 158, 11, 0.15); color: #fbbf24; }}
+        .badge-danger {{ background: rgba(239, 68, 68, 0.15); color: #f87171; }}
+        .badge-info {{ background: rgba(56, 189, 248, 0.15); color: #38bdf8; }}
+        footer {{
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>EU CTIS Clinical Trial Pipeline Dashboard</h1>
+                <div class="subtitle">Live status, execution history, and trial synchronization audit report</div>
+            </div>
+            <div class="meta-actions">
+                <span class="badge badge-success">ONLINE</span>
+                <a href="{target_json_url}" class="btn" target="_blank">View Raw JSON API</a>
+            </div>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-label">Total Trials Tracked</div>
+                <div class="card-value">{metrics.get('total_trials_tracked', 0)}</div>
+                <div class="card-desc">Saved across Bronze & Silver</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Successfully Ingested</div>
+                <div class="card-value" style="color: #34d399;">{metrics.get('succeeded', 0)}</div>
+                <div class="card-desc">S3 + DynamoDB verified</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Pending Ingestion</div>
+                <div class="card-value" style="color: #fbbf24;">{metrics.get('pending', 0) + metrics.get('update_pending', 0)}</div>
+                <div class="card-desc">Awaiting background sync</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Failed Ingestion</div>
+                <div class="card-value" style="color: {'#f87171' if metrics.get('failed', 0) > 0 else '#94a3b8'};">{metrics.get('failed', 0)}</div>
+                <div class="card-desc">Quarantined errors</div>
+            </div>
+        </div>
+
+        <div class="section-title">Execution Totals by Run Mode (Historical / New / Updates)</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Run Mode</th>
+                        <th>Runs Count</th>
+                        <th>Discovered</th>
+                        <th>Processed</th>
+                        <th>Succeeded</th>
+                        <th>Failed</th>
+                        <th>Last Executed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {runs_by_type_rows}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">Daily Activity & Sync Breakdown</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Mode</th>
+                        <th>Runs Count</th>
+                        <th>Discovered</th>
+                        <th>Processed</th>
+                        <th>Succeeded</th>
+                        <th>Failed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {daily_rows if daily_rows else '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No daily activity recorded yet.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">Recent Pipeline Runs</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Run ID</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Discovered</th>
+                        <th>Processed</th>
+                        <th>Succeeded</th>
+                        <th>Failed</th>
+                        <th>Started At</th>
+                        <th>Completed At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {recent_runs_rows if recent_runs_rows else '<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No runs recorded yet.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">Recently Synchronized Clinical Trials</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Trial CT Number</th>
+                        <th>Status</th>
+                        <th>EU Registry Publish Date</th>
+                        <th>Last Fetched At</th>
+                        <th>S3 Silver Prefix</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {recent_trials_rows if recent_trials_rows else '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No trials synchronized yet.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">Live JSON Payload Preview (Expandable)</div>
+        <details class="table-container" style="padding: 16px; background: #020617;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 12px;">Click to view full JSON payload preview</summary>
+            <pre style="background: transparent; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.8rem; color: #e2e8f0; font-family: Consolas, monospace;"><code>{json_pretty_str}</code></pre>
+        </details>
+
+        <footer>
+            Report generated at {report.get('generated_at', 'UTC')} | S3: {env.get('s3_bucket')} | DynamoDB: {env.get('dynamodb_table')}
+        </footer>
+    </div>
+</body>
+</html>"""
+    return html
+
+
+def publish_pipeline_status_report(
+    report_data: Optional[Dict[str, Any]] = None,
+    generate_html: bool = True,
+    expires_in_seconds: int = 604800,
+) -> Dict[str, Any]:
+    """Generates, saves locally, uploads to AWS S3, and returns browser pre-signed URLs for pipeline status report.
+
+    Args:
+        report_data: Optional pre-generated report dict. If None, pulled from database.
+        generate_html: Whether to also generate and upload an interactive HTML dashboard.
+        expires_in_seconds: Expiration for browser pre-signed URL (default 7 days).
+
+    Returns:
+        Dictionary containing local paths, S3 keys, and browser pre-signed URLs.
+    """
+    from ctis_etl import database
+
+    if report_data is None:
+        report_data = database.generate_pipeline_summary_report()
+
+    results: Dict[str, Any] = {
+        "report_generated_at": report_data.get("generated_at"),
+        "overall_metrics": report_data.get("overall_metrics"),
+    }
+
+    # 1. Local JSON Persistence
+    local_json_path = config.DATA_DIR / "pipeline_status.json"
+    _write_local_json(local_json_path, report_data)
+    results["local_json_path"] = str(local_json_path)
+
+    # 2. S3 Persistence for JSON (Upload first to get presigned URL for HTML button)
+    json_presigned_url: Optional[str] = None
+    s3 = get_s3_client()
+    if s3 is not None and config.STORAGE_BACKEND in ("s3", "both"):
+        try:
+            s3_json_key = f"{config.S3_PREFIX}pipeline_status.json"
+            json_bytes = json.dumps(report_data, indent=2, ensure_ascii=False).encode("utf-8")
+            s3.put_object(
+                Bucket=config.S3_BUCKET_NAME,
+                Key=s3_json_key,
+                Body=json_bytes,
+                ContentType="application/json",
+                CacheControl="no-cache, no-store, must-revalidate",
+            )
+            json_presigned_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_json_key},
+                ExpiresIn=expires_in_seconds,
+            )
+            results["s3_json_key"] = s3_json_key
+            results["json_url"] = f"https://{config.S3_BUCKET_NAME}.s3.amazonaws.com/{s3_json_key}"
+            results["json_browser_url"] = json_presigned_url
+        except Exception as e:
+            logger.error(f"Failed uploading status JSON to S3: {e}")
+
+    # 3. HTML Dashboard Persistence (Injecting the valid presigned JSON URL into the button)
+    if generate_html:
+        target_json_link = json_presigned_url or "pipeline_status.json"
+        html_content = generate_dashboard_html(report_data, json_url=target_json_link)
+
+        local_html_path = config.DATA_DIR / "pipeline_status.html"
+        try:
+            with open(local_html_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            results["local_html_path"] = str(local_html_path)
+        except Exception as e:
+            logger.error(f"Failed saving local HTML dashboard: {e}")
+
+        if s3 is not None and config.STORAGE_BACKEND in ("s3", "both"):
+            try:
+                s3_html_key = f"{config.S3_PREFIX}pipeline_status.html"
+                s3.put_object(
+                    Bucket=config.S3_BUCKET_NAME,
+                    Key=s3_html_key,
+                    Body=html_content.encode("utf-8"),
+                    ContentType="text/html",
+                    CacheControl="no-cache, no-store, must-revalidate",
+                )
+                html_presigned_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_html_key},
+                    ExpiresIn=expires_in_seconds,
+                )
+                results["s3_html_key"] = s3_html_key
+                results["html_url"] = f"https://{config.S3_BUCKET_NAME}.s3.amazonaws.com/{s3_html_key}"
+                results["html_browser_url"] = html_presigned_url
+            except Exception as e:
+                logger.error(f"Failed uploading status HTML to S3: {e}")
+
+    logger.info("Published live pipeline status report and dashboard.")
+    return results
+
+
