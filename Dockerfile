@@ -35,8 +35,8 @@ RUN chmod 0644 /etc/cron.d/ctis-cron && \
     chmod +x entrypoint.sh && \
     mkdir -p data logs quarantine
 
-# Define volumes for persistent local data & logs (if used)
-VOLUME ["/app/data", "/app/logs", "/app/quarantine"]
+# Expose Web Dashboard Port
+EXPOSE 8080
 
 # Run entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]

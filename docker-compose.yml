@@ -10,12 +10,14 @@ services:
     env_file:
       - .env
     environment:
-      # Run historical collection upon startup, while cron runs new and update checks
+      # Run incremental sync on startup to immediately pull the latest trials
       - RUN_ON_STARTUP=true
-      - STARTUP_MODE=historical
-      # Cron schedule (Default: Daily at 02:00 AM UTC). Change e.g. to "0 */12 * * *" for every 12 hours
+      - STARTUP_MODE=incremental
+      # Cron schedule (Default: Daily at 02:00 AM UTC). Change e.g. to "0 */2 * * *" for every 2 hours
       - CRON_SCHEDULE=0 2 * * *
       - PYTHONUNBUFFERED=1
+    ports:
+      - "8080:8080"
     volumes:
       # Persistent local volumes for output files, state database, and logs
       - ./data:/app/data

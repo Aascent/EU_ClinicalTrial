@@ -28,17 +28,28 @@ echo "=========================================================="
 echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Starting cron daemon in background (for scheduled new trials & update checks)..."
 cron
 
-# Publish initial status report immediately so dashboard is available from minute 1
-echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Publishing initial status dashboard..."
+# Start background Web Dashboard HTTP server on port 8080
+echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Starting Web Dashboard HTTP server on http://0.0.0.0:8080..."
+python -m http.server 8080 --directory /app/data > /app/logs/webserver.log 2>&1 &
+
+# Publish initial status report immediately
 python -m ctis_etl.main --mode report || true
 
-# Launch initial historical backfill (extract all historical data by default, or as configured)
+# Launch startup sync (default: incremental to fetch the latest trials immediately)
 if [ "${RUN_ON_STARTUP:-true}" = "true" ]; then
-    STARTUP_MODE="${STARTUP_MODE:-historical}"
-    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Running initial sync on container startup with mode: ${STARTUP_MODE}..."
+    STARTUP_MODE="${STARTUP_MODE:-incremental}"
+    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Running initial sync on container startup with mode: ${STARTUP_MODE} (fetching latest data)..."
     python -m ctis_etl.main --mode "${STARTUP_MODE}"
-    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Initial startup sync completed."
+    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Initial sync completed! Dashboard updated with latest data."
 fi
+
+# Print status and URLs prominently
+python -m ctis_etl.main --mode status || true
+
+echo "=========================================================="
+echo " EU CTIS PIPELINE & DASHBOARD ARE READY AND RUNNING!"
+echo " Web Dashboard : http://<server-ip>:8080/"
+echo "=========================================================="
 
 # Stream application and cron logs to Docker standard output
 echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Following pipeline logs..."

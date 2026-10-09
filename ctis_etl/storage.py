@@ -1414,8 +1414,11 @@ def publish_pipeline_status_report(
         html_content = generate_dashboard_html(report_data, json_url=target_json_link)
 
         local_html_path = config.DATA_DIR / "pipeline_status.html"
+        index_html_path = config.DATA_DIR / "index.html"
         try:
             with open(local_html_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            with open(index_html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
             results["local_html_path"] = str(local_html_path)
         except Exception as e:
