@@ -391,11 +391,37 @@ def run_retry_failed(
     failed_queue: List[str] = []
     try:
         with database.sqlite3.connect(database.get_sqlite_path()) as conn:
-            conn.execute("UPDATE trials SET status = 'PENDING', retry_count = 0 WHERE status = 'FAILED'")
-            conn.commit()
-        failed_queue = database.get_pending_trials()
-        logger.info(f"Re-queued {len(failed_queue)} previously failed trials. Processing...")
+            cursor = conn.cursor()
+            cursor.execute("SELECT ct_number FROM trials WHERE status = 'FAILED'")
+            failed_queue = [r[0] for r in cursor.fetchall()]
+            if failed_queue:
+                cursor.execute(
+                    """
+                    UPDATE trials
+                    SET status = CASE WHEN last_fetched_at IS NOT NULL THEN 'UPDATE_PENDING' ELSE 'PENDING' END,
+                        retry_count = 0
+                    WHERE status = 'FAILED'
+                    """
+                )
+                conn.commit()
 
+        if not failed_queue:
+            logger.info("No failed trials found to retry.")
+            completed_at = datetime.now(timezone.utc).isoformat()
+            database.record_pipeline_run(
+                run_id=run_id,
+                run_type="RETRY_FAILED",
+                started_at=started_at,
+                completed_at=completed_at,
+                status="COMPLETED",
+                discovered=0,
+                processed=0,
+                succeeded=0,
+                failed=0,
+            )
+            return
+
+        logger.info(f"Re-queued {len(failed_queue)} previously failed trials. Processing...")
         succeeded, failed = _process_trial_queue(client, failed_queue, max_workers, storage_backend)
         run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
         completed_at = datetime.now(timezone.utc).isoformat()

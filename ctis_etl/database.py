@@ -86,10 +86,15 @@ def init_sqlite_db() -> None:
                 trials_discovered INTEGER DEFAULT 0,
                 trials_processed INTEGER DEFAULT 0,
                 trials_succeeded INTEGER DEFAULT 0,
-                trials_failed INTEGER DEFAULT 0
+                trials_failed INTEGER DEFAULT 0,
+                updated_at TEXT
             );
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_runs_started ON pipeline_runs(started_at);")
+        try:
+            cursor.execute("ALTER TABLE pipeline_runs ADD COLUMN updated_at TEXT;")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
 
 
@@ -119,6 +124,20 @@ def mark_processing(ct_number: str) -> None:
         )
         conn.commit()
 
+    if config.STATE_BACKEND in ("dynamodb", "both"):
+        table = get_dynamodb_table()
+        if table:
+            try:
+                table.update_item(
+                    Key={config.DYNAMODB_PARTITION_KEY: ct_number},
+                    UpdateExpression="SET #s = :s, updated_at = :u",
+                    ExpressionAttributeNames={"#s": "status"},
+                    ExpressionAttributeValues={":s": "PROCESSING", ":u": now_iso},
+                )
+            except Exception as e:
+                logger.debug(f"DynamoDB mark_processing update failed for {ct_number}: {e}")
+
+
 
 def reset_stale_processing(timeout_minutes: int = 15) -> int:
     """Recovers trials left in PROCESSING state if a container or worker crashed."""
@@ -129,8 +148,13 @@ def reset_stale_processing(timeout_minutes: int = 15) -> int:
     with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE trials SET status = 'PENDING', updated_at = ? WHERE status = 'PROCESSING' AND updated_at < ?",
-            (now_iso, cutoff)
+            """
+            UPDATE trials
+            SET status = CASE WHEN last_fetched_at IS NOT NULL THEN 'UPDATE_PENDING' ELSE 'PENDING' END,
+                updated_at = ?
+            WHERE status = 'PROCESSING' AND updated_at < ?
+            """,
+            (now_iso, cutoff),
         )
         conn.commit()
         return cursor.rowcount
@@ -144,26 +168,20 @@ def reset_stale_pipeline_runs(timeout_hours: int = 4) -> int:
     now_iso = datetime.now(timezone.utc).isoformat()
     with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
-        if _active_run_id:
-            cursor.execute(
-                """
-                UPDATE pipeline_runs
-                SET status = 'INTERRUPTED', completed_at = ?
-                WHERE status = 'RUNNING' AND started_at < ? AND run_id != ?
-                """,
-                (now_iso, cutoff, _active_run_id),
-            )
-        else:
-            cursor.execute(
-                """
-                UPDATE pipeline_runs
-                SET status = 'INTERRUPTED', completed_at = ?
-                WHERE status = 'RUNNING' AND started_at < ?
-                """,
-                (now_iso, cutoff),
-            )
+        active_id = _active_run_id or ""
+        cursor.execute(
+            """
+            UPDATE pipeline_runs
+            SET status = 'INTERRUPTED', completed_at = ?, updated_at = ?
+            WHERE status = 'RUNNING'
+              AND run_id != ?
+              AND COALESCE(updated_at, started_at) < ?
+            """,
+            (now_iso, now_iso, active_id, cutoff),
+        )
         conn.commit()
         return cursor.rowcount
+
 
 
 def get_trial_status(ct_number: str) -> Optional[Dict[str, Any]]:
@@ -205,24 +223,30 @@ def stage_trial(ct_number: str, api_publish_date: Optional[str]) -> str:
     current_status = existing.get("status")
     db_date = existing.get("last_publish_date")
 
+    # If actively being processed by a worker thread, do not clobber in-flight state
+    if current_status == "PROCESSING":
+        return "PROCESSING"
+
     # If already successfully fetched and publication date hasn't changed, skip
     if current_status == "SUCCESS" and db_date == api_publish_date and api_publish_date is not None:
         return "UNCHANGED"
 
     # Needs update or retry
-    new_status = "UPDATE_PENDING" if current_status == "SUCCESS" else "PENDING"
+    new_status = "UPDATE_PENDING" if (current_status == "SUCCESS" or existing.get("last_fetched_at")) else "PENDING"
+    reset_retry = 0 if (db_date != api_publish_date and api_publish_date is not None) else existing.get("retry_count", 0)
     with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
             """
             UPDATE trials
-            SET status = ?, last_publish_date = ?, updated_at = ?
+            SET status = ?, last_publish_date = ?, retry_count = ?, updated_at = ?
             WHERE ct_number = ?
             """,
-            (new_status, api_publish_date, now_iso, ct_number),
+            (new_status, api_publish_date, reset_retry, now_iso, ct_number),
         )
         conn.commit()
 
     return new_status
+
 
 
 def mark_success(ct_number: str, last_publish_date: Optional[str]) -> None:
@@ -275,10 +299,14 @@ def mark_failure(ct_number: str, error_message: str) -> None:
 
     with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT retry_count FROM trials WHERE ct_number = ?", (ct_number,))
+        cursor.execute("SELECT retry_count, last_fetched_at FROM trials WHERE ct_number = ?", (ct_number,))
         row = cursor.fetchone()
         retry_count = (row[0] + 1) if row else 1
-        new_status = "FAILED" if retry_count >= 3 else "PENDING"
+        has_previous_fetch = bool(row and row[1])
+        if retry_count >= 3:
+            new_status = "FAILED"
+        else:
+            new_status = "UPDATE_PENDING" if has_previous_fetch else "PENDING"
 
         cursor.execute(
             """
@@ -360,23 +388,25 @@ def record_pipeline_run(
     failed: int = 0,
 ) -> None:
     """Logs pipeline run metrics for monitoring and auditing."""
+    now_iso = datetime.now(timezone.utc).isoformat()
     init_sqlite_db()
     with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
             """
             INSERT INTO pipeline_runs (
                 run_id, run_type, started_at, completed_at, status,
-                trials_discovered, trials_processed, trials_succeeded, trials_failed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                trials_discovered, trials_processed, trials_succeeded, trials_failed, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
-                completed_at = excluded.completed_at,
+                completed_at = COALESCE(excluded.completed_at, pipeline_runs.completed_at),
                 status = excluded.status,
                 trials_discovered = excluded.trials_discovered,
                 trials_processed = excluded.trials_processed,
                 trials_succeeded = excluded.trials_succeeded,
-                trials_failed = excluded.trials_failed
+                trials_failed = excluded.trials_failed,
+                updated_at = excluded.updated_at
             """,
-            (run_id, run_type, started_at, completed_at, status, discovered, processed, succeeded, failed),
+            (run_id, run_type, started_at, completed_at, status, discovered, processed, succeeded, failed, now_iso),
         )
         conn.commit()
 
