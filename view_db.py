@@ -68,12 +68,15 @@ def main():
     try:
         from ctis_etl import storage
         report_urls = storage.publish_pipeline_status_report()
+        print("\n[PIPELINE STATUS & DASHBOARD]")
+        if "html_browser_url" in report_urls:
+            print(f"Cloud HTML Dashboard (7-day link):  {report_urls['html_browser_url']}")
         if "json_browser_url" in report_urls:
-            print("\n[LIVE STATUS URLS - OPEN DIRECTLY IN BROWSER]")
-            print(f"JSON Status URL (7-day link):  {report_urls['json_browser_url']}")
-            if "html_browser_url" in report_urls:
-                print(f"HTML Dashboard  (7-day link):  {report_urls['html_browser_url']}")
-            print(f"Local JSON File:               {report_urls.get('local_json_path')}")
+            print(f"Cloud JSON Status (7-day link):     {report_urls['json_browser_url']}")
+        if "local_html_path" in report_urls:
+            print(f"Local HTML Dashboard (Open in browser): file:///{Path(report_urls['local_html_path']).resolve().as_posix()}")
+        if "local_json_path" in report_urls:
+            print(f"Local JSON Status File:                 file:///{Path(report_urls['local_json_path']).resolve().as_posix()}")
     except Exception as e:
         pass
 
