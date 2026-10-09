@@ -337,93 +337,122 @@ def run_full(
     current_page = 1
     page_size = 100
 
-    while True:
-        logger.info(f"[Catalog Discovery] Fetching Search API page {current_page} (size={page_size})...")
-        try:
-            resp = client.search_page(page=current_page, size=page_size, sort_property="decisionDate", sort_direction="DESC")
-        except Exception as e:
-            logger.error(f"Error fetching search page {current_page}: {e}. Retrying page after 5s...")
-            import time
-            time.sleep(5)
-            continue
-
-        items = resp.get("data", [])
-        pagination = resp.get("pagination", {})
-        total_pages = pagination.get("totalPages", current_page)
-        total_records = pagination.get("totalRecords", total_discovered)
-
-        if not items:
-            break
-
-        # Stage items for this page
-        page_pending = []
-        for item in items:
-            total_discovered += 1
-            ct_number = item.get("ctNumber")
-            if not ct_number:
+    try:
+        while True:
+            logger.info(f"[Catalog Discovery] Fetching Search API page {current_page} (size={page_size})...")
+            try:
+                resp = client.search_page(page=current_page, size=page_size, sort_property="decisionDate", sort_direction="DESC")
+            except Exception as e:
+                logger.error(f"Error fetching search page {current_page}: {e}. Retrying page after 5s...")
+                import time
+                time.sleep(5)
                 continue
-            raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
-            state = database.stage_trial(ct_number, raw_date)
-            if state in ("PENDING", "UPDATE_PENDING"):
-                page_pending.append(ct_number)
-            else:
-                total_skipped += 1
 
-        # Process any pending trials for this batch
-        if page_pending:
-            logger.info(
-                f"[Page {current_page}/{total_pages}] Ingesting {len(page_pending)} trials "
-                f"({len(items) - len(page_pending)} already up to date)..."
-            )
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_map = {
-                    executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
-                    for ct_num in page_pending
-                }
-                for future in concurrent.futures.as_completed(future_map):
-                    ct_num = future_map[future]
-                    total_processed += 1
-                    try:
-                        if future.result():
-                            total_succeeded += 1
-                        else:
+            items = resp.get("data", [])
+            pagination = resp.get("pagination", {})
+            total_pages = pagination.get("totalPages", current_page)
+            total_records = pagination.get("totalRecords", total_discovered)
+
+            if not items:
+                break
+
+            # Stage items for this page
+            page_pending = []
+            for item in items:
+                total_discovered += 1
+                ct_number = item.get("ctNumber")
+                if not ct_number:
+                    continue
+                raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
+                state = database.stage_trial(ct_number, raw_date)
+                if state in ("PENDING", "UPDATE_PENDING"):
+                    page_pending.append(ct_number)
+                else:
+                    total_skipped += 1
+
+            # Process any pending trials for this batch
+            if page_pending:
+                logger.info(
+                    f"[Page {current_page}/{total_pages}] Ingesting {len(page_pending)} trials "
+                    f"({len(items) - len(page_pending)} already up to date)..."
+                )
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_map = {
+                        executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
+                        for ct_num in page_pending
+                    }
+                    for future in concurrent.futures.as_completed(future_map):
+                        ct_num = future_map[future]
+                        total_processed += 1
+                        try:
+                            if future.result():
+                                total_succeeded += 1
+                            else:
+                                total_failed += 1
+                        except Exception as e:
                             total_failed += 1
-                    except Exception as e:
-                        total_failed += 1
-                        logger.error(f"Failure processing {ct_num}: {e}")
-        else:
-            logger.info(f"[Page {current_page}/{total_pages}] All {len(items)} trials already up to date. Skipping batch.")
+                            logger.error(f"Failure processing {ct_num}: {e}")
+            else:
+                logger.info(f"[Page {current_page}/{total_pages}] All {len(items)} trials already up to date. Skipping batch.")
 
-        logger.info(
-            f"Progress: Page {current_page}/{total_pages} | "
-            f"Discovered: {total_discovered}/{total_records} | Succeeded: {total_succeeded} | "
-            f"Skipped: {total_skipped} | Failed: {total_failed}"
+            logger.info(
+                f"Progress: Page {current_page}/{total_pages} | "
+                f"Discovered: {total_discovered}/{total_records} | Succeeded: {total_succeeded} | "
+                f"Skipped: {total_skipped} | Failed: {total_failed}"
+            )
+
+            if current_page >= total_pages or _shutdown_event.is_set():
+                break
+            current_page += 1
+            if current_page % 5 == 0:
+                database.record_pipeline_run(
+                    run_id=run_id,
+                    run_type="FULL",
+                    started_at=started_at,
+                    completed_at=None,
+                    status="RUNNING",
+                    discovered=total_discovered,
+                    processed=total_processed,
+                    succeeded=total_succeeded,
+                    failed=total_failed,
+                )
+                _publish_report()
+
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="FULL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=total_discovered,
+            processed=total_processed,
+            succeeded=total_succeeded,
+            failed=total_failed,
         )
-
-        if current_page >= total_pages:
-            break
-        current_page += 1
-        if current_page % 5 == 0:
-            _publish_report()
-
-    completed_at = datetime.now(timezone.utc).isoformat()
-    database.record_pipeline_run(
-        run_id=run_id,
-        run_type="FULL",
-        started_at=started_at,
-        completed_at=completed_at,
-        status="COMPLETED",
-        discovered=total_discovered,
-        processed=total_processed,
-        succeeded=total_succeeded,
-        failed=total_failed,
-    )
-    logger.info(
-        f"FULL catalog ingestion finished! Total Discovered: {total_discovered}, "
-        f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
-        f"Skipped: {total_skipped}, Failed: {total_failed}"
-    )
-    _publish_report()
+        logger.info(
+            f"FULL catalog ingestion finished ({run_status})! Total Discovered: {total_discovered}, "
+            f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
+            f"Skipped: {total_skipped}, Failed: {total_failed}"
+        )
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="FULL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=total_discovered,
+            processed=total_processed,
+            succeeded=total_succeeded,
+            failed=total_failed,
+        )
+        logger.error(f"FULL catalog ingestion failed: {e}")
+        raise
+    finally:
+        _publish_report()
 
 
 def run_check(client: CTISClient) -> None:
@@ -548,8 +577,11 @@ def main() -> None:
     client = CTISClient(base_url=config.CTIS_API_BASE_URL)
     database.init_sqlite_db()
     stale_count = database.reset_stale_processing(timeout_minutes=15)
+    stale_runs = database.reset_stale_pipeline_runs(timeout_hours=4)
     if stale_count > 0:
         logger.info(f"Automatically recovered {stale_count} stale trials left from interrupted runs.")
+    if stale_runs > 0:
+        logger.info(f"Automatically closed {stale_runs} orphaned RUNNING pipeline run(s) as INTERRUPTED.")
 
     if args.mode in ("status", "report"):
         report = database.generate_pipeline_summary_report()

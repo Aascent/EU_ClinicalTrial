@@ -121,6 +121,26 @@ def reset_stale_processing(timeout_minutes: int = 15) -> int:
         return cursor.rowcount
 
 
+def reset_stale_pipeline_runs(timeout_hours: int = 4) -> int:
+    """Recovers orphaned pipeline runs left in RUNNING status if the process terminated unexpectedly."""
+    init_sqlite_db()
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=timeout_hours)).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(get_sqlite_path()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE pipeline_runs
+            SET status = 'INTERRUPTED', completed_at = ?
+            WHERE status = 'RUNNING' AND started_at < ?
+            """,
+            (now_iso, cutoff)
+        )
+        conn.commit()
+        return cursor.rowcount
+
+
 def get_trial_status(ct_number: str) -> Optional[Dict[str, Any]]:
     """Fetches the state record for a single trial."""
     init_sqlite_db()
@@ -339,6 +359,10 @@ def record_pipeline_run(
 def generate_pipeline_summary_report() -> Dict[str, Any]:
     """Aggregates pipeline runs and trials tracking state into a comprehensive report dictionary."""
     init_sqlite_db()
+    # Auto-heal any stale in-flight trials or crashed runs before compiling audit summary
+    reset_stale_processing(timeout_minutes=15)
+    reset_stale_pipeline_runs(timeout_hours=4)
+
     with sqlite3.connect(get_sqlite_path()) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -531,7 +555,12 @@ def generate_pipeline_summary_report() -> Dict[str, Any]:
 
         succeeded_count = status_counts.get("SUCCESS", 0)
         failed_count = status_counts.get("FAILED", 0)
-        pending_count = status_counts.get("PENDING", 0) + status_counts.get("UPDATE_PENDING", 0)
+        processing_count = status_counts.get("PROCESSING", 0)
+        pending_count = (
+            status_counts.get("PENDING", 0)
+            + status_counts.get("UPDATE_PENDING", 0)
+            + processing_count
+        )
         success_rate = round((succeeded_count / total_trials * 100), 1) if total_trials > 0 else 100.0
 
         return {
@@ -548,6 +577,7 @@ def generate_pipeline_summary_report() -> Dict[str, Any]:
                 "total_trials_tracked": total_trials,
                 "succeeded": succeeded_count,
                 "pending": pending_count,
+                "processing": processing_count,
                 "failed": failed_count,
                 "success_rate": success_rate,
             },

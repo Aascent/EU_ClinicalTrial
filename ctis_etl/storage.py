@@ -205,6 +205,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     total_trials = metrics.get("total_trials_tracked", 0)
     succeeded = metrics.get("succeeded", 0)
     pending = metrics.get("pending", 0)
+    processing = metrics.get("processing", 0)
     failed = metrics.get("failed", 0)
     success_rate = metrics.get("success_rate", 100.0 if failed == 0 else 0.0)
 
@@ -228,6 +229,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             "INCREMENTAL": ("Daily Incremental Check", "sync", "Scans for new trials and protocol amendments"),
             "NEW_TRIALS": ("New Trials Discovery", "fiber_new", "Scans for newly registered clinical studies"),
             "UPDATED_TRIALS": ("Amendments Audit", "update", "Checks existing trials for regulatory updates"),
+            "FULL": ("Full Catalog Ingestion", "database", "End-to-end full catalogue synchronization"),
             "HISTORICAL": ("Historical Archive Backfill", "inventory_2", "Deep historical synchronization sweep"),
             "SINGLE": ("Single Trial Sync", "track_changes", "On-demand manual fetch for a specific study"),
             "RETRY_FAILED": ("Quarantine Error Retry", "replay", "Retrying previously failed trial records"),
@@ -283,7 +285,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     recent_runs_rows = ""
     for run in recent_runs:
         st = run.get("status", "UNKNOWN")
-        st_badge = "badge-success" if st == "COMPLETED" else ("badge-warning" if st == "RUNNING" else "badge-danger")
+        st_badge = "badge-success" if st == "COMPLETED" else ("badge-warning" if st == "RUNNING" else ("badge-secondary" if st == "INTERRUPTED" else "badge-danger"))
         rtype = run.get("run_type", "")
         name, icon, _ = _run_meta(rtype)
         succ = run.get("trials_succeeded", 0)
@@ -299,8 +301,17 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
                 summary_text = f'<span class="material-symbols-outlined" style="color: #38bdf8; font-size: 16px; vertical-align: text-bottom;">done_all</span> Checked {disc} trials (All records already up to date)'
             else:
                 summary_text = '<span class="material-symbols-outlined" style="color: #94a3b8; font-size: 16px; vertical-align: text-bottom;">search</span> Scanned EU registry (No new updates detected)'
+        elif st == "RUNNING":
+            summary_text = '<span class="material-symbols-outlined" style="color: #fbbf24; font-size: 16px; vertical-align: text-bottom;">sync</span> Active scan / ingestion in progress'
+        elif st == "INTERRUPTED":
+            summary_text = '<span class="material-symbols-outlined" style="color: #94a3b8; font-size: 16px; vertical-align: text-bottom;">pause_circle</span> Run interrupted or timed out'
         else:
             summary_text = f"Status: {st}"
+
+        if proc > disc and disc > 0:
+            counts_subtext = f"New in Scan: {disc} | Total Queue Processed: {proc} | Saved: {succ} | Failed: {fail}"
+        else:
+            counts_subtext = f"Found: {disc} | Processed: {proc} | Saved: {succ} | Failed: {fail}"
 
         recent_runs_rows += f"""
         <tr>
@@ -317,7 +328,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             <td>
                 <div style="font-size: 0.85rem; color: #e2e8f0; font-weight: 500; display: flex; align-items: center; gap: 4px;">{summary_text}</div>
                 <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 2px;">
-                    Found: {disc} | Processed: {proc} | Saved: {succ} | Failed: {fail}
+                    {counts_subtext}
                 </div>
             </td>
             <td style="font-size: 0.82rem; color: #cbd5e1; font-family: Consolas, monospace;">{_fmt_ts(run.get('started_at'))}</td>
@@ -329,7 +340,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
     recent_trials_rows = ""
     for idx, tr in enumerate(recent_trials):
         tst = tr.get("status", "UNKNOWN")
-        badge = "badge-success" if tst == "SUCCESS" else ("badge-warning" if "PENDING" in tst else "badge-danger")
+        badge = "badge-success" if tst == "SUCCESS" else ("badge-warning" if ("PENDING" in tst or tst == "PROCESSING") else "badge-danger")
         ct_num = tr.get("ct_number", "Unknown")
         title = tr.get("title", f"Clinical Trial {ct_num}")
         sponsor = tr.get("sponsor", "Unspecified Sponsor")
@@ -337,6 +348,10 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
         countries = tr.get("countries", [])
         country_str = ", ".join(countries[:3]) + (f" (+{len(countries)-3} more)" if len(countries) > 3 else "") if countries else "EU / EEA"
         pub_date = _fmt_date(tr.get("last_publish_date"))
+
+        status_text = '● INGESTED' if tst == 'SUCCESS' else ('● IN PROGRESS' if tst == 'PROCESSING' else ('● PENDING' if 'PENDING' in tst else tst))
+        status_sub = '6 Datasets Verified' if tst == 'SUCCESS' else ('In-flight worker' if tst == 'PROCESSING' else 'Queued')
+        status_sub_color = '#34d399' if tst == 'SUCCESS' else ('#fbbf24' if tst == 'PROCESSING' else '#94a3b8')
 
         recent_trials_rows += f"""
         <tr class="trial-row" data-status="{tst}" data-ct="{ct_num}">
@@ -363,8 +378,8 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
                 </div>
             </td>
             <td>
-                <span class="badge {badge}">{'● INGESTED' if tst == 'SUCCESS' else tst}</span>
-                <div style="font-size: 0.75rem; color: #34d399; margin-top: 4px;">6 Datasets Verified</div>
+                <span class="badge {badge}">{status_text}</span>
+                <div style="font-size: 0.75rem; color: {status_sub_color}; margin-top: 4px;">{status_sub}</div>
             </td>
             <td>
                 <div style="font-size: 0.85rem; color: #e2e8f0; font-weight: 600;">{pub_date}</div>
@@ -522,6 +537,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
         .badge-warning {{ background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); }}
         .badge-danger {{ background: rgba(248, 113, 113, 0.15); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }}
         .badge-info {{ background: rgba(56, 189, 248, 0.15); color: var(--accent); border: 1px solid rgba(56, 189, 248, 0.3); }}
+        .badge-secondary {{ background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }}
 
         /* Pulse indicator */
         .status-pill {{
@@ -1005,7 +1021,7 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
                     </span>
                 </div>
                 <div class="card-value" style="color: {'#fbbf24' if pending > 0 else '#94a3b8'};">{pending}</div>
-                <div class="card-desc">Scheduled for next automated scan</div>
+                <div class="card-desc">{'Scheduled for next automated scan' if pending == 0 else (f'{processing} in-flight / queued' if processing > 0 else f'{pending} queued for next scan')}</div>
                 <div class="card-progress">
                     <div class="card-progress-bar" style="width: {'100%' if pending > 0 else '0%'}; background: var(--warning);"></div>
                 </div>
@@ -1288,7 +1304,9 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
             rows.forEach(r => {{
                 const status = r.getAttribute("data-status");
                 const matchesSearch = r.innerText.toUpperCase().indexOf(search) > -1;
-                const matchesStatus = (currentFilterStatus === "ALL") || (status === currentFilterStatus);
+                const matchesStatus = (currentFilterStatus === "ALL") ||
+                    (status === currentFilterStatus) ||
+                    (currentFilterStatus === "PENDING" && (status === "PENDING" || status === "PROCESSING" || status === "UPDATE_PENDING"));
                 r.style.display = (matchesSearch && matchesStatus) ? "" : "none";
             }});
         }}
