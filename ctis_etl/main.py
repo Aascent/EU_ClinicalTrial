@@ -227,28 +227,48 @@ def run_new_trials(
     """Process 2: Checks CTIS for brand new trials published recently and ingests them."""
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
     database.record_pipeline_run(run_id, "NEW_TRIALS", started_at, status="RUNNING")
 
     logger.info(">>> [PROCESS 2] Checking for brand NEW clinical trials...")
-    discovered = discover_and_stage_recent(client, lookback_days)
-    new_queue = database.get_pending_trials(filter_type="new")
-    logger.info(f"Discovered {len(new_queue)} brand NEW trials ready for ingestion.")
+    discovered = 0
+    new_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        new_queue = database.get_pending_trials(filter_type="new")
+        logger.info(f"Discovered {len(new_queue)} brand NEW trials ready for ingestion.")
 
-    succeeded, failed = _process_trial_queue(client, new_queue, max_workers, storage_backend)
-    completed_at = datetime.now(timezone.utc).isoformat()
-    database.record_pipeline_run(
-        run_id=run_id,
-        run_type="NEW_TRIALS",
-        started_at=started_at,
-        completed_at=completed_at,
-        status="COMPLETED",
-        discovered=discovered,
-        processed=len(new_queue),
-        succeeded=succeeded,
-        failed=failed,
-    )
-    logger.info(f"[PROCESS 2 COMPLETED] New trials processed: {len(new_queue)}, Succeeded: {succeeded}, Failed: {failed}")
-    _publish_report()
+        succeeded, failed = _process_trial_queue(client, new_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="NEW_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(new_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[PROCESS 2 {run_status}] New trials processed: {len(new_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="NEW_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(new_queue),
+        )
+        logger.error(f"Process 2 failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
 
 
 def run_updated_trials(
@@ -260,28 +280,48 @@ def run_updated_trials(
     """Process 3: Checks CTIS for updates or amendments to existing trials and updates them."""
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
     database.record_pipeline_run(run_id, "UPDATED_TRIALS", started_at, status="RUNNING")
 
     logger.info(">>> [PROCESS 3] Checking for UPDATES / AMENDMENTS to existing trials...")
-    discovered = discover_and_stage_recent(client, lookback_days)
-    updates_queue = database.get_pending_trials(filter_type="updates")
-    logger.info(f"Discovered {len(updates_queue)} UPDATED trials ready for re-ingestion.")
+    discovered = 0
+    updates_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        updates_queue = database.get_pending_trials(filter_type="updates")
+        logger.info(f"Discovered {len(updates_queue)} UPDATED trials ready for re-ingestion.")
 
-    succeeded, failed = _process_trial_queue(client, updates_queue, max_workers, storage_backend)
-    completed_at = datetime.now(timezone.utc).isoformat()
-    database.record_pipeline_run(
-        run_id=run_id,
-        run_type="UPDATED_TRIALS",
-        started_at=started_at,
-        completed_at=completed_at,
-        status="COMPLETED",
-        discovered=discovered,
-        processed=len(updates_queue),
-        succeeded=succeeded,
-        failed=failed,
-    )
-    logger.info(f"[PROCESS 3 COMPLETED] Updated trials processed: {len(updates_queue)}, Succeeded: {succeeded}, Failed: {failed}")
-    _publish_report()
+        succeeded, failed = _process_trial_queue(client, updates_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="UPDATED_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(updates_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[PROCESS 3 {run_status}] Updated trials processed: {len(updates_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="UPDATED_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(updates_queue),
+        )
+        logger.error(f"Process 3 failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
 
 
 def run_incremental(
@@ -293,28 +333,100 @@ def run_incremental(
     """Discovers both new and updated trials within lookback window and synchronizes them."""
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
     database.record_pipeline_run(run_id, "INCREMENTAL", started_at, status="RUNNING")
 
     logger.info(f"Starting combined incremental sync (new + updates) with {lookback_days}-day lookback...")
-    discovered = discover_and_stage_recent(client, lookback_days)
-    pending_queue = database.get_pending_trials()
-    logger.info(f"Queue size for ingestion (new + updates): {len(pending_queue)} trials")
+    discovered = 0
+    pending_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        pending_queue = database.get_pending_trials()
+        logger.info(f"Queue size for ingestion (new + updates): {len(pending_queue)} trials")
 
-    succeeded, failed = _process_trial_queue(client, pending_queue, max_workers, storage_backend)
-    completed_at = datetime.now(timezone.utc).isoformat()
-    database.record_pipeline_run(
-        run_id=run_id,
-        run_type="INCREMENTAL",
-        started_at=started_at,
-        completed_at=completed_at,
-        status="COMPLETED",
-        discovered=discovered,
-        processed=len(pending_queue),
-        succeeded=succeeded,
-        failed=failed,
-    )
-    logger.info(f"Incremental sync finished. Processed: {len(pending_queue)}, Succeeded: {succeeded}, Failed: {failed}")
-    _publish_report()
+        succeeded, failed = _process_trial_queue(client, pending_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="INCREMENTAL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(pending_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"Incremental sync finished ({run_status}). Processed: {len(pending_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="INCREMENTAL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(pending_queue),
+        )
+        logger.error(f"Incremental sync failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_retry_failed(
+    client: CTISClient,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Retries previously quarantined or failed trials stored in the database."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "RETRY_FAILED", started_at, status="RUNNING")
+
+    failed_queue: List[str] = []
+    try:
+        with database.sqlite3.connect(database.get_sqlite_path()) as conn:
+            conn.execute("UPDATE trials SET status = 'PENDING', retry_count = 0 WHERE status = 'FAILED'")
+            conn.commit()
+        failed_queue = database.get_pending_trials()
+        logger.info(f"Re-queued {len(failed_queue)} previously failed trials. Processing...")
+
+        succeeded, failed = _process_trial_queue(client, failed_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="RETRY_FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=len(failed_queue),
+            processed=len(failed_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[RETRY_FAILED {run_status}] Processed: {len(failed_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="RETRY_FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=len(failed_queue),
+            processed=len(failed_queue),
+        )
+        logger.error(f"Retry failed execution error: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
 
 
 def run_full(
@@ -325,6 +437,7 @@ def run_full(
     """Discovers all trials and processes the full catalog."""
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
     database.record_pipeline_run(run_id, "FULL", started_at, status="RUNNING")
 
     logger.info("Starting FULL historical catalog ingestion (processing page-by-page)...")
@@ -646,16 +759,11 @@ def main() -> None:
         )
 
     elif args.mode == "retry-failed":
-        # Pull trials currently marked FAILED and re-queue as PENDING
-        with database.sqlite3.connect(database.get_sqlite_path()) as conn:
-            conn.execute("UPDATE trials SET status = 'PENDING', retry_count = 0 WHERE status = 'FAILED'")
-            conn.commit()
-        pending = database.get_pending_trials()
-        logger.info(f"Re-queued {len(pending)} previously failed trials. Processing...")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
-            futures = [executor.submit(process_single_trial, client, ct, args.storage) for ct in pending]
-            concurrent.futures.wait(futures)
-        _publish_report()
+        run_retry_failed(
+            client=client,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
 
 
 if __name__ == "__main__":

@@ -93,14 +93,29 @@ def init_sqlite_db() -> None:
         conn.commit()
 
 
+_active_run_id: Optional[str] = None
+
+
+def set_active_run_id(run_id: Optional[str]) -> None:
+    """Sets or clears the currently executing pipeline run ID to protect it from stale cleanup."""
+    global _active_run_id
+    _active_run_id = run_id
+
+
 def mark_processing(ct_number: str) -> None:
     """Marks trial as currently in-flight to prevent duplicate worker pickup."""
     now_iso = datetime.now(timezone.utc).isoformat()
     init_sqlite_db()
     with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
-            "UPDATE trials SET status = 'PROCESSING', updated_at = ? WHERE ct_number = ?",
-            (now_iso, ct_number)
+            """
+            INSERT INTO trials (ct_number, status, retry_count, created_at, updated_at)
+            VALUES (?, 'PROCESSING', 0, ?, ?)
+            ON CONFLICT(ct_number) DO UPDATE SET
+                status = 'PROCESSING',
+                updated_at = excluded.updated_at
+            """,
+            (ct_number, now_iso, now_iso),
         )
         conn.commit()
 
@@ -129,14 +144,24 @@ def reset_stale_pipeline_runs(timeout_hours: int = 4) -> int:
     now_iso = datetime.now(timezone.utc).isoformat()
     with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE pipeline_runs
-            SET status = 'INTERRUPTED', completed_at = ?
-            WHERE status = 'RUNNING' AND started_at < ?
-            """,
-            (now_iso, cutoff)
-        )
+        if _active_run_id:
+            cursor.execute(
+                """
+                UPDATE pipeline_runs
+                SET status = 'INTERRUPTED', completed_at = ?
+                WHERE status = 'RUNNING' AND started_at < ? AND run_id != ?
+                """,
+                (now_iso, cutoff, _active_run_id),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE pipeline_runs
+                SET status = 'INTERRUPTED', completed_at = ?
+                WHERE status = 'RUNNING' AND started_at < ?
+                """,
+                (now_iso, cutoff),
+            )
         conn.commit()
         return cursor.rowcount
 
@@ -408,6 +433,7 @@ def generate_pipeline_summary_report() -> Dict[str, Any]:
                    COALESCE(SUM(trials_succeeded), 0) as succeeded,
                    COALESCE(SUM(trials_failed), 0) as failed
             FROM pipeline_runs
+            WHERE (status = 'COMPLETED' OR trials_processed > 0)
             GROUP BY run_date, run_type
             ORDER BY run_date DESC, run_type ASC
             """
@@ -562,6 +588,8 @@ def generate_pipeline_summary_report() -> Dict[str, Any]:
             + processing_count
         )
         success_rate = round((succeeded_count / total_trials * 100), 1) if total_trials > 0 else 100.0
+        if total_trials > succeeded_count and success_rate >= 100.0:
+            success_rate = 99.9
 
         return {
             "title": "EU CTIS Clinical Trial Pipeline - Activity & Status Report",
