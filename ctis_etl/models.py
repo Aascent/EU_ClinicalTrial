@@ -52,8 +52,8 @@ class RawTrialDossier(BaseModel):
     trial_region: Optional[str] = Field(default=None, alias="trialRegion")
     trial_region_code: Optional[int] = Field(default=None, alias="trialRegionCode")
     authorized_application: Optional[Dict[str, Any]] = Field(default=None, alias="authorizedApplication")
-    documents: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
-    results: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    events: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    documents: Optional[Any] = Field(default=None, alias="documents")
+    results: Optional[Any] = Field(default=None, alias="results")
+    events: Optional[Any] = Field(default=None, alias="events")
 
     model_config = ConfigDict(populate_by_name=True, extra="allow")
