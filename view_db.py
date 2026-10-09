@@ -3,10 +3,20 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("tracker.db")
+def _resolve_db_path() -> Path:
+    try:
+        from ctis_etl import config
+        p = config.SQLITE_DB_PATH
+    except Exception:
+        p = Path("tracker.db")
+    if p.is_dir():
+        p = p / "tracker.db"
+    return p
+
+DB_PATH = _resolve_db_path()
 
 def main():
-    if not DB_PATH.exists():
+    if not DB_PATH.exists() or DB_PATH.is_dir():
         print(f"Database file '{DB_PATH}' does not exist yet.")
         return
 

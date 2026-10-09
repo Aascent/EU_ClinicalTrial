@@ -45,9 +45,19 @@ def get_dynamodb_table():
         return None
 
 
+def get_sqlite_path() -> Path:
+    """Returns the resolved SQLite database path, handling Docker directory mounts."""
+    path = config.SQLITE_DB_PATH
+    if path.is_dir():
+        path = path / "tracker.db"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def init_sqlite_db() -> None:
     """Creates SQLite tracking tables and indexes if they do not exist."""
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    db_path = get_sqlite_path()
+    with sqlite3.connect(db_path) as conn:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA busy_timeout=30000;")
         cursor = conn.cursor()
@@ -66,49 +76,6 @@ def init_sqlite_db() -> None:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_trials_status ON trials(status);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_trials_updated ON trials(updated_at);")
 
-
-def mark_processing(ct_number: str) -> None:
-    """Marks trial as currently in-flight to prevent duplicate worker pickup."""
-    now_iso = datetime.now(timezone.utc).isoformat()
-    init_sqlite_db()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
-        conn.execute(
-            "UPDATE trials SET status = 'PROCESSING', updated_at = ? WHERE ct_number = ?",
-            (now_iso, ct_number)
-        )
-        conn.commit()
-
-
-def reset_stale_processing(timeout_minutes: int = 15) -> int:
-    """Recovers trials left in PROCESSING state if a container or worker crashed."""
-    init_sqlite_db()
-    from datetime import timedelta
-    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)).isoformat()
-    now_iso = datetime.now(timezone.utc).isoformat()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE trials SET status = 'PENDING', updated_at = ? WHERE status = 'PROCESSING' AND updated_at < ?",
-            (now_iso, cutoff)
-        )
-        conn.commit()
-        return cursor.rowcount
-        conn.execute("PRAGMA busy_timeout=15000;")
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS trials (
-                ct_number TEXT PRIMARY KEY,
-                status TEXT NOT NULL,
-                retry_count INTEGER DEFAULT 0,
-                last_publish_date TEXT,
-                last_fetched_at TEXT,
-                error_message TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trials_status ON trials(status);")
-
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS pipeline_runs (
                 run_id TEXT PRIMARY KEY,
@@ -122,13 +89,42 @@ def reset_stale_processing(timeout_minutes: int = 15) -> int:
                 trials_failed INTEGER DEFAULT 0
             );
         """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_runs_started ON pipeline_runs(started_at);")
         conn.commit()
+
+
+def mark_processing(ct_number: str) -> None:
+    """Marks trial as currently in-flight to prevent duplicate worker pickup."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    init_sqlite_db()
+    with sqlite3.connect(get_sqlite_path()) as conn:
+        conn.execute(
+            "UPDATE trials SET status = 'PROCESSING', updated_at = ? WHERE ct_number = ?",
+            (now_iso, ct_number)
+        )
+        conn.commit()
+
+
+def reset_stale_processing(timeout_minutes: int = 15) -> int:
+    """Recovers trials left in PROCESSING state if a container or worker crashed."""
+    init_sqlite_db()
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(get_sqlite_path()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE trials SET status = 'PENDING', updated_at = ? WHERE status = 'PROCESSING' AND updated_at < ?",
+            (now_iso, cutoff)
+        )
+        conn.commit()
+        return cursor.rowcount
 
 
 def get_trial_status(ct_number: str) -> Optional[Dict[str, Any]]:
     """Fetches the state record for a single trial."""
     init_sqlite_db()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM trials WHERE ct_number = ?", (ct_number,))
@@ -150,7 +146,7 @@ def stage_trial(ct_number: str, api_publish_date: Optional[str]) -> str:
 
     if existing is None:
         # Brand new trial
-        with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        with sqlite3.connect(get_sqlite_path()) as conn:
             conn.execute(
                 """
                 INSERT INTO trials (ct_number, status, retry_count, last_publish_date, created_at, updated_at)
@@ -170,7 +166,7 @@ def stage_trial(ct_number: str, api_publish_date: Optional[str]) -> str:
 
     # Needs update or retry
     new_status = "UPDATE_PENDING" if current_status == "SUCCESS" else "PENDING"
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
             """
             UPDATE trials
@@ -190,7 +186,7 @@ def mark_success(ct_number: str, last_publish_date: Optional[str]) -> None:
     init_sqlite_db()
 
     # Update SQLite
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
             """
             INSERT INTO trials (ct_number, status, retry_count, last_publish_date, last_fetched_at, error_message, created_at, updated_at)
@@ -232,7 +228,7 @@ def mark_failure(ct_number: str, error_message: str) -> None:
     now_iso = datetime.now(timezone.utc).isoformat()
     init_sqlite_db()
 
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT retry_count FROM trials WHERE ct_number = ?", (ct_number,))
         row = cursor.fetchone()
@@ -278,7 +274,7 @@ def get_pending_trials(filter_type: Optional[str] = None) -> List[str]:
         filter_type: 'new' (only PENDING), 'updates' (only UPDATE_PENDING), or None (both)
     """
     init_sqlite_db()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         cursor = conn.cursor()
         if filter_type == "new":
             cursor.execute(
@@ -320,7 +316,7 @@ def record_pipeline_run(
 ) -> None:
     """Logs pipeline run metrics for monitoring and auditing."""
     init_sqlite_db()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         conn.execute(
             """
             INSERT INTO pipeline_runs (
@@ -343,7 +339,7 @@ def record_pipeline_run(
 def generate_pipeline_summary_report() -> Dict[str, Any]:
     """Aggregates pipeline runs and trials tracking state into a comprehensive report dictionary."""
     init_sqlite_db()
-    with sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+    with sqlite3.connect(get_sqlite_path()) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 

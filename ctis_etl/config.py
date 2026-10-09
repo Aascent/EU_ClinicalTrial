@@ -10,21 +10,8 @@ from pathlib import Path
 
 # Base Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-BRONZE_DIR = DATA_DIR / "bronze"
-SILVER_DIR = DATA_DIR / "silver"
-QUARANTINE_DIR = BASE_DIR / "quarantine"
-LOGS_DIR = BASE_DIR / "logs"
-SQLITE_DB_PATH = BASE_DIR / "tracker.db"
 
-# Ensure runtime directories exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-BRONZE_DIR.mkdir(parents=True, exist_ok=True)
-SILVER_DIR.mkdir(parents=True, exist_ok=True)
-QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
-
-# Load .env file
+# Load .env file first so any custom paths/settings are applied
 def _load_env_file() -> None:
     env_file = BASE_DIR / ".env"
     if not env_file.exists():
@@ -47,6 +34,33 @@ def _load_env_file() -> None:
                         os.environ[key] = val
 
 _load_env_file()
+
+DATA_DIR = BASE_DIR / "data"
+BRONZE_DIR = DATA_DIR / "bronze"
+SILVER_DIR = DATA_DIR / "silver"
+QUARANTINE_DIR = BASE_DIR / "quarantine"
+LOGS_DIR = BASE_DIR / "logs"
+
+# SQLite DB Path (auto-resolves if volume-mounted as a directory by Docker)
+_env_sqlite = os.getenv("SQLITE_DB_PATH")
+if _env_sqlite:
+    SQLITE_DB_PATH = Path(_env_sqlite)
+else:
+    SQLITE_DB_PATH = BASE_DIR / "tracker.db"
+
+# Safety guard: If SQLITE_DB_PATH points to a directory (common Docker bind-mount quirk
+# when 'tracker.db' was mounted as a volume before the file was created on the host),
+# resolve the actual database file inside that directory.
+if SQLITE_DB_PATH.is_dir():
+    SQLITE_DB_PATH = SQLITE_DB_PATH / "tracker.db"
+
+# Ensure runtime directories exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+BRONZE_DIR.mkdir(parents=True, exist_ok=True)
+SILVER_DIR.mkdir(parents=True, exist_ok=True)
+QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+SQLITE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 # AWS Configuration
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID") or os.getenv("ACCESS_KEY", "")
