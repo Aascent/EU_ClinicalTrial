@@ -403,6 +403,8 @@ def run_full(
         if current_page >= total_pages:
             break
         current_page += 1
+        if current_page % 5 == 0:
+            _publish_report()
 
     completed_at = datetime.now(timezone.utc).isoformat()
     database.record_pipeline_run(
@@ -577,6 +579,7 @@ def main() -> None:
             logger.error("--ct-number is required when using --mode single")
             sys.exit(1)
         ok = process_single_trial(client, args.ct_number, storage_backend=args.storage)
+        _publish_report()
         sys.exit(0 if ok else 1)
 
     elif args.mode in ("historical", "full"):
@@ -612,7 +615,7 @@ def main() -> None:
 
     elif args.mode == "retry-failed":
         # Pull trials currently marked FAILED and re-queue as PENDING
-        with database.sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+        with database.sqlite3.connect(database.get_sqlite_path()) as conn:
             conn.execute("UPDATE trials SET status = 'PENDING', retry_count = 0 WHERE status = 'FAILED'")
             conn.commit()
         pending = database.get_pending_trials()
@@ -620,6 +623,7 @@ def main() -> None:
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = [executor.submit(process_single_trial, client, ct, args.storage) for ct in pending]
             concurrent.futures.wait(futures)
+        _publish_report()
 
 
 if __name__ == "__main__":
