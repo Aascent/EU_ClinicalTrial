@@ -60,6 +60,7 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
         self.assertEqual(domains["summary.json"]["ctNumber"], "2026-527084-15-00")
         self.assertEqual(domains["locations_and_contact_points.json"]["ctNumber"], "2026-527084-15-00")
         self.assertIsInstance(domains["trial_documents.json"], list)
+        self.assertGreater(len(domains["trial_documents.json"]), 0)
         self.assertIsInstance(domains["trial_results.json"], dict)
         self.assertIsInstance(domains["full_trial_information.json"], dict)
 
@@ -315,6 +316,37 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
         self.assertEqual(processed.count("TRIAL-DESC-1"), 1)
         self.assertEqual(len(processed), 2)
 
+    def test_10_resolve_document_download_urls(self):
+        """Verify that resolve_document_download_urls calls download endpoint and stores response S3 URL."""
+        from unittest.mock import MagicMock
+        from ctis_etl import storage
+
+        mock_client = MagicMock()
+        mock_s3_url = "https://ctis-publication-engine-doc-storage-prod.s3.eu-central-1.amazonaws.com/TEST-CT/test-uuid-1234?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300"
+        mock_client.resolve_document_s3_url.return_value = mock_s3_url
+
+        test_docs = [
+            {
+                "title": "Protocol",
+                "uuid": "test-uuid-1234",
+                "fileType": "PDF",
+                "downloadUrl": "https://euclinicaltrials.eu/ctis-public-api/documents/TEST-CT/test-uuid-1234/download",
+            }
+        ]
+
+        enriched = storage.resolve_document_download_urls(
+            client=mock_client,
+            ct_number="TEST-CT",
+            documents=test_docs,
+        )
+
+        self.assertEqual(len(enriched), 1)
+        doc = enriched[0]
+        self.assertEqual(doc["url"], mock_s3_url)
+        self.assertNotIn("downloadUrl", doc)
+        self.assertNotIn("apiUrl", doc)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -84,6 +84,73 @@ def _upload_s3_json(
         return False
 
 
+def resolve_document_download_urls(
+    client: Any,
+    ct_number: str,
+    documents: List[Dict[str, Any]],
+    backend: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Calls the CTIS public API document endpoint to extract the actual PDF download URL from the response.
+
+    Input endpoint: https://euclinicaltrials.eu/ctis-public-api/documents/{ctNumber}/{uuid}/download
+    Response JSON:  {"url": "https://ctis-publication-engine-doc-storage-prod.s3..."}
+    Stores the resulting 'url' directly into each document in trial_documents.json.
+    """
+    if not documents or not isinstance(documents, list):
+        return documents
+
+    enriched_docs: List[Dict[str, Any]] = []
+
+    for doc in documents:
+        if not isinstance(doc, dict):
+            enriched_docs.append(doc)
+            continue
+
+        doc_copy = dict(doc)
+        # Remove any extraneous url fields to keep the document clean
+        doc_copy.pop("downloadUrl", None)
+        doc_copy.pop("download_url", None)
+        doc_copy.pop("apiUrl", None)
+        doc_copy.pop("directDownloadUrl", None)
+        doc_copy.pop("direct_download_url", None)
+
+        uuid = str(doc_copy.get("uuid") or "").strip()
+        if not uuid or not ct_number:
+            enriched_docs.append(doc_copy)
+            continue
+
+        api_endpoint = f"https://euclinicaltrials.eu/ctis-public-api/documents/{ct_number}/{uuid}/download"
+
+        ext = (doc_copy.get("fileType") or "pdf").lower().strip(".")
+        title = doc_copy.get("title") or uuid
+        clean_title = "".join(c for c in title if c.isalnum() or c in ("-", "_", " ")).strip()
+        doc_copy["fileName"] = f"{clean_title}.{ext}" if not clean_title.lower().endswith(f".{ext}") else clean_title
+
+        try:
+            actual_pdf_url = None
+            if client is not None and hasattr(client, "resolve_document_s3_url"):
+                actual_pdf_url = client.resolve_document_s3_url(ct_number, uuid)
+            else:
+                import requests
+                resp = requests.get(api_endpoint, timeout=15)
+                if resp.status_code == 200:
+                    actual_pdf_url = resp.json().get("url")
+
+            if actual_pdf_url:
+                doc_copy["url"] = actual_pdf_url
+        except Exception as e:
+            logger.warning(f"Could not resolve response URL for document {uuid} (trial {ct_number}): {e}")
+
+        enriched_docs.append(doc_copy)
+
+    return enriched_docs
+
+
+# Backward compatibility alias
+sync_trial_documents = resolve_document_download_urls
+
+
+
 def save_trial_files(
     ct_number: str,
     parsed_files: Dict[str, Any],

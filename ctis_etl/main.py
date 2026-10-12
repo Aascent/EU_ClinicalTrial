@@ -75,6 +75,7 @@ def process_single_trial(
     client: CTISClient,
     ct_number: str,
     storage_backend: Optional[str] = None,
+    download_docs: bool = config.DOWNLOAD_DOCUMENTS,
 ) -> bool:
     """Retrieves, validates, parses, stores a single trial and updates state DB."""
     if _shutdown_event.is_set():
@@ -93,6 +94,15 @@ def process_single_trial(
 
         # Parse into 6 discrete domain files (Silver Layer)
         silver_files = parser.parse_trial_dossier(raw_payload)
+
+        # Download attached regulatory PDF documents if enabled
+        if download_docs and "trial_documents.json" in silver_files:
+            silver_files["trial_documents.json"] = storage.sync_trial_documents(
+                client=client,
+                ct_number=ct_number,
+                documents=silver_files["trial_documents.json"],
+                backend=storage_backend,
+            )
 
         # Persist Bronze (raw.json) and Silver (6 domain files)
         save_results = storage.save_trial_files(
@@ -774,8 +784,22 @@ def main() -> None:
         default=config.STORAGE_BACKEND,
         help="Storage target backend (default: from .env)",
     )
+    parser_cli.add_argument(
+        "--download-docs",
+        dest="download_docs",
+        action="store_true",
+        default=config.DOWNLOAD_DOCUMENTS,
+        help="Download PDF files for trial documents to storage (default: True)",
+    )
+    parser_cli.add_argument(
+        "--no-download-docs",
+        dest="download_docs",
+        action="store_false",
+        help="Disable downloading PDF files for trial documents",
+    )
 
     args = parser_cli.parse_args()
+    config.DOWNLOAD_DOCUMENTS = args.download_docs
     client = CTISClient(base_url=config.CTIS_API_BASE_URL)
     database.init_sqlite_db()
     database.restore_state_from_dynamodb_if_empty()

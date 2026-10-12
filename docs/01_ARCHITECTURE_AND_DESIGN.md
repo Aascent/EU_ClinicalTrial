@@ -87,7 +87,7 @@ The monolithic API response from `GET /retrieve/{ctNumber}` is parsed into 6 dis
 | **`meta_data.json`** | Root: `ctNumber`, `ctStatus`, `decisionDate`, `publishDate`, `ctPublicStatusCode`, `trialRegion`, `events`, `correctiveMeasures` | Regulatory status, lineage timestamps, pipeline versioning, and lifecycle events. |
 | **`summary.json`** | `authorizedPartI.trialDetails.clinicalTrialIdentifiers`, `sponsors`, `trialCategory.trialPhase`, `medicalConditions`, `therapeuticAreas` | High-level overview for fast indexing, search engines, and summary dashboards. |
 | **`full_trial_information.json`** | Entire `authorizedApplication.authorizedPartI` object | Deep scientific dossier: protocol design, inclusion/exclusion criteria, objectives, and investigational products. Preserved as-is to guarantee zero schema loss. |
-| **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types). |
+| **`trial_documents.json`** | Root: `documents` list | Attached regulatory documents catalog (titles, UUIDs, languages, document types, file sizes, local/S3 permanent direct download links). |
 | **`trial_results.json`** | Root: `results` object | Clinical study results and outcome reports (empty `{}` if not yet submitted). |
 | **`locations_and_contact_points.json`** | Merged from `authorizedPartsII` (MSCs and recruitment sites) and `sponsors[*].publicContacts`/`scientificContacts` | Geographic coverage across EU countries, investigator sites, and regulatory contact points. |
 

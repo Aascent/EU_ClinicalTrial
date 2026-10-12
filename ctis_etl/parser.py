@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ctis_etl import config
+
 
 def _safe_dict(obj: Any, key: Optional[str] = None) -> Dict[str, Any]:
     """Safely extracts a nested dictionary, returning {} if None or wrong type."""

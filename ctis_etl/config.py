@@ -85,12 +85,14 @@ DYNAMODB_PARTITION_KEY = os.getenv("DYNAMODB_PARTITION_KEY") or os.getenv("PARTI
 CTIS_API_BASE_URL = os.getenv("CTIS_API_BASE_URL", "https://euclinicaltrials.eu/ctis-public-api").rstrip("/")
 SEARCH_URL = f"{CTIS_API_BASE_URL}/search"
 RETRIEVE_URL = f"{CTIS_API_BASE_URL}/retrieve"
+DOCUMENTS_URL = f"{CTIS_API_BASE_URL}/documents"
 
 # Runtime Settings
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", "5"))
 LOOKBACK_DAYS = int(os.getenv("LOOKBACK_DAYS", "7"))
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "s3").lower()  # 's3', 'local', or 'both'
 STATE_BACKEND = os.getenv("STATE_BACKEND", "dynamodb").lower()  # 'dynamodb', 'sqlite', or 'both'
+DOWNLOAD_DOCUMENTS = os.getenv("DOWNLOAD_DOCUMENTS", "true").lower() in ("true", "1", "yes")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Production Resilience & Network Constants

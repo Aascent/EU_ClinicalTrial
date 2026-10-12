@@ -42,6 +42,7 @@ class CTISClient:
         self.base_url = (base_url or config.CTIS_API_BASE_URL).rstrip("/")
         self.search_url = f"{self.base_url}/search"
         self.retrieve_url = f"{self.base_url}/retrieve"
+        self.documents_url = f"{self.base_url}/documents"
         self.max_retries = max_retries
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
@@ -215,3 +216,34 @@ class CTISClient:
             raise CTISNotFoundError(f"Trial {ct_number} was not found or returned empty dossier.")
 
         return data
+
+    def get_document_download_url(self, ct_number: str, document_uuid: str) -> str:
+        """Returns the stable CTIS public API download endpoint for a regulatory document."""
+        return f"{self.documents_url}/{ct_number}/{document_uuid}/download"
+
+    def resolve_document_s3_url(self, ct_number: str, document_uuid: str) -> str:
+        """Calls the document download endpoint and returns the pre-signed S3 direct download URL.
+
+        Note: The returned AWS S3 URL is short-lived (expires in 300 seconds / 5 minutes).
+        """
+        endpoint = self.get_document_download_url(ct_number, document_uuid)
+        resp = self._execute_request_with_retry(endpoint, method="GET")
+        s3_url = resp.get("url") if isinstance(resp, dict) else None
+        if not s3_url:
+            raise CTISAPIError(f"No S3 download URL returned for trial {ct_number} document {document_uuid}: {resp}")
+        return s3_url
+
+    def download_document_bytes(self, ct_number: str, document_uuid: str) -> bytes:
+        """Resolves the temporary S3 presigned URL and downloads the raw document binary content (PDF)."""
+        s3_url = self.resolve_document_s3_url(ct_number, document_uuid)
+        if self._httpx_client is not None:
+            resp = self._httpx_client.get(s3_url)
+            resp.raise_for_status()
+            return resp.content
+        else:
+            req = urllib.request.Request(
+                s3_url,
+                headers={"User-Agent": config.DEFAULT_HEADERS.get("User-Agent", "CTIS-ETL")},
+            )
+            with urllib.request.urlopen(req, timeout=self.read_timeout) as response:
+                return response.read()

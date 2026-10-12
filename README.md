@@ -49,10 +49,11 @@ data/ (or s3://aascent-mindgram/ctis/)
 │
 └── silver/
     └── 2026-527084-15-00/
+        ├── documents/                         # Downloaded regulatory PDF documents ({uuid}.pdf)
         ├── meta_data.json                     # Status, regulatory dates, trial region, lineage
         ├── summary.json                       # Identifiers, titles, sponsors, trial phase
         ├── full_trial_information.json        # Complete scientific Part I protocol dossier
-        ├── trial_documents.json               # Public regulatory documents & UUID metadata
+        ├── trial_documents.json               # Regulatory documents catalog with permanent direct download links
         ├── trial_results.json                 # Trial outcome summaries & clinical reports
         └── locations_and_contact_points.json  # Member states, trial sites, sponsor contacts
 ```
