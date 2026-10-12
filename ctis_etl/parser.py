@@ -65,8 +65,19 @@ def parse_trial_dossier(raw_data: Dict[str, Any]) -> Dict[str, Any]:
     # 3. full_trial_information.json (Entire Part I preserved as-is without schema loss)
     full_trial_information = auth_part_i
 
-    # 4. trial_documents.json
-    trial_documents = _safe_list(raw_data, "documents")
+    # 4. trial_documents.json (Always enriched with permanent public download endpoint)
+    raw_documents = _safe_list(raw_data, "documents")
+    trial_documents = []
+    for doc in raw_documents:
+        if isinstance(doc, dict):
+            doc_item = dict(doc)
+            uuid = str(doc_item.get("uuid") or "").strip()
+            if uuid and ct_number:
+                doc_item["url"] = f"https://euclinicaltrials.eu/ctis-public-api/documents/{ct_number}/{uuid}/download"
+            doc_item.pop("downloadUrl", None)
+            trial_documents.append(doc_item)
+        else:
+            trial_documents.append(doc)
 
     # 5. trial_results.json
     trial_results = _safe_dict(raw_data, "results")

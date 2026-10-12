@@ -317,34 +317,37 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
         self.assertEqual(len(processed), 2)
 
     def test_10_resolve_document_download_urls(self):
-        """Verify that resolve_document_download_urls calls download endpoint and stores response S3 URL."""
-        from unittest.mock import MagicMock
+        """Verify that resolve_document_download_urls stores permanent endpoint URLs that never expire."""
         from ctis_etl import storage
-
-        mock_client = MagicMock()
-        mock_s3_url = "https://ctis-publication-engine-doc-storage-prod.s3.eu-central-1.amazonaws.com/TEST-CT/test-uuid-1234?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300"
-        mock_client.resolve_document_s3_url.return_value = mock_s3_url
+        from ctis_etl.api_client import CTISClient
+        from unittest.mock import MagicMock
 
         test_docs = [
             {
-                "title": "Protocol",
+                "title": "Protocol for Publication",
                 "uuid": "test-uuid-1234",
                 "fileType": "PDF",
-                "downloadUrl": "https://euclinicaltrials.eu/ctis-public-api/documents/TEST-CT/test-uuid-1234/download",
             }
         ]
 
         enriched = storage.resolve_document_download_urls(
-            client=mock_client,
+            client=None,
             ct_number="TEST-CT",
             documents=test_docs,
         )
 
         self.assertEqual(len(enriched), 1)
         doc = enriched[0]
-        self.assertEqual(doc["url"], mock_s3_url)
+        expected_url = "https://euclinicaltrials.eu/ctis-public-api/documents/TEST-CT/test-uuid-1234/download"
+        self.assertEqual(doc["url"], expected_url)
         self.assertNotIn("downloadUrl", doc)
-        self.assertNotIn("apiUrl", doc)
+        self.assertEqual(doc["fileName"], "Protocol for Publication.pdf")
+
+        # Also verify client can resolve S3 URL directly from this stored endpoint URL
+        client = CTISClient()
+        client._execute_request_with_retry = MagicMock(return_value={"url": "https://s3.example.com/fresh-url?expires=300"})
+        fresh_url = client.resolve_document_s3_url(doc["url"])
+        self.assertEqual(fresh_url, "https://s3.example.com/fresh-url?expires=300")
 
 
 if __name__ == "__main__":

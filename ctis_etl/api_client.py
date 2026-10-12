@@ -223,24 +223,41 @@ class CTISClient:
         """Returns the stable CTIS public API download endpoint for a regulatory document."""
         return f"{self.documents_url}/{ct_number}/{document_uuid}/download"
 
-    def resolve_document_s3_url(self, ct_number: str, document_uuid: str) -> str:
-        """Calls the document download endpoint and returns the pre-signed S3 direct download URL.
+    def resolve_document_s3_url(self, ct_number_or_url: str, document_uuid: Optional[str] = None) -> str:
+        """Calls the document download endpoint and returns a fresh pre-signed S3 direct download URL.
+
+        Accepts either:
+          - (ct_number, document_uuid), e.g. ("2026-527084-15-00", "1b258c08-...")
+          - Or the full permanent endpoint URL, e.g. "https://euclinicaltrials.eu/ctis-public-api/documents/2026-527084-15-00/1b258c08-.../download"
 
         Note: The returned AWS S3 URL is short-lived (expires in 300 seconds / 5 minutes).
         """
-        endpoint = self.get_document_download_url(ct_number, document_uuid)
-        doc_headers = {
-            "Referer": f"https://euclinicaltrials.eu/ctis-public/view/{ct_number}?lang=en",
-        }
+        if ct_number_or_url.startswith("http://") or ct_number_or_url.startswith("https://"):
+            endpoint = ct_number_or_url
+            parts = endpoint.split("/documents/")
+            ct_num = parts[1].split("/")[0] if len(parts) > 1 else ""
+        else:
+            if not document_uuid:
+                raise ValueError("document_uuid is required when passing trial number instead of full URL.")
+            endpoint = self.get_document_download_url(ct_number_or_url, document_uuid)
+            ct_num = ct_number_or_url
+
+        doc_headers = {}
+        if ct_num:
+            doc_headers["Referer"] = f"https://euclinicaltrials.eu/ctis-public/view/{ct_num}?lang=en"
+
         resp = self._execute_request_with_retry(endpoint, method="GET", headers=doc_headers)
         s3_url = resp.get("url") if isinstance(resp, dict) else None
         if not s3_url:
-            raise CTISAPIError(f"No S3 download URL returned for trial {ct_number} document {document_uuid}: {resp}")
+            raise CTISAPIError(f"No S3 download URL returned for endpoint {endpoint}: {resp}")
         return s3_url
 
-    def download_document_bytes(self, ct_number: str, document_uuid: str) -> bytes:
-        """Resolves the temporary S3 presigned URL and downloads the raw document binary content (PDF)."""
-        s3_url = self.resolve_document_s3_url(ct_number, document_uuid)
+    # Convenient alias for generating fresh temporary S3 URLs from stored permanent URLs
+    generate_fresh_download_url = resolve_document_s3_url
+
+    def download_document_bytes(self, ct_number_or_url: str, document_uuid: Optional[str] = None) -> bytes:
+        """Resolves the temporary S3 presigned URL on demand and downloads the raw document binary content (PDF)."""
+        s3_url = self.resolve_document_s3_url(ct_number_or_url, document_uuid)
         if self._httpx_client is not None:
             resp = self._httpx_client.get(s3_url)
             resp.raise_for_status()

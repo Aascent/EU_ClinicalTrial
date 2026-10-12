@@ -90,11 +90,11 @@ def resolve_document_download_urls(
     documents: List[Dict[str, Any]],
     backend: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Calls the CTIS public API document endpoint to extract the actual PDF download URL from the response.
+    """Enriches documents in trial_documents.json with permanent CTIS API download endpoint URLs.
 
     Input endpoint: https://euclinicaltrials.eu/ctis-public-api/documents/{ctNumber}/{uuid}/download
-    Response JSON:  {"url": "https://ctis-publication-engine-doc-storage-prod.s3..."}
-    Stores the resulting 'url' directly into each document in trial_documents.json.
+    The stored permanent endpoint never expires. When called via GET, it returns a fresh 5-minute
+    pre-signed AWS S3 URL dynamically on demand, preventing expiration failures.
     """
     if not documents or not isinstance(documents, list):
         return documents
@@ -107,13 +107,6 @@ def resolve_document_download_urls(
             continue
 
         doc_copy = dict(doc)
-        # Remove any extraneous url fields to keep the document clean
-        doc_copy.pop("downloadUrl", None)
-        doc_copy.pop("download_url", None)
-        doc_copy.pop("apiUrl", None)
-        doc_copy.pop("directDownloadUrl", None)
-        doc_copy.pop("direct_download_url", None)
-
         uuid = str(doc_copy.get("uuid") or "").strip()
         if not uuid or not ct_number:
             enriched_docs.append(doc_copy)
@@ -126,20 +119,9 @@ def resolve_document_download_urls(
         clean_title = "".join(c for c in title if c.isalnum() or c in ("-", "_", " ")).strip()
         doc_copy["fileName"] = f"{clean_title}.{ext}" if not clean_title.lower().endswith(f".{ext}") else clean_title
 
-        try:
-            actual_pdf_url = None
-            if client is not None and hasattr(client, "resolve_document_s3_url"):
-                actual_pdf_url = client.resolve_document_s3_url(ct_number, uuid)
-            else:
-                import requests
-                resp = requests.get(api_endpoint, timeout=15)
-                if resp.status_code == 200:
-                    actual_pdf_url = resp.json().get("url")
-
-            if actual_pdf_url:
-                doc_copy["url"] = actual_pdf_url
-        except Exception as e:
-            logger.warning(f"Could not resolve response URL for document {uuid} (trial {ct_number}): {e}")
+        # Store the permanent CTIS API endpoint in 'url' (calling GET yields a fresh 5-min S3 link)
+        doc_copy["url"] = api_endpoint
+        doc_copy.pop("downloadUrl", None)
 
         enriched_docs.append(doc_copy)
 
@@ -170,6 +152,15 @@ def save_trial_files(
     """
     backend = (backend or config.STORAGE_BACKEND).lower()
     results: Dict[str, bool] = {}
+
+    # Ensure trial_documents.json always contains the permanent url field and no duplicate downloadUrl
+    if "trial_documents.json" in parsed_files and isinstance(parsed_files["trial_documents.json"], list):
+        for doc in parsed_files["trial_documents.json"]:
+            if isinstance(doc, dict):
+                uuid = str(doc.get("uuid") or "").strip()
+                if uuid and ct_number and (not doc.get("url") or "amazonaws.com" in str(doc.get("url", ""))):
+                    doc["url"] = f"https://euclinicaltrials.eu/ctis-public-api/documents/{ct_number}/{uuid}/download"
+                doc.pop("downloadUrl", None)
 
     save_local = backend in ("local", "both")
     save_s3 = backend in ("s3", "both")
