@@ -58,6 +58,8 @@ if SQLITE_DB_PATH.is_dir():
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 BRONZE_DIR.mkdir(parents=True, exist_ok=True)
 SILVER_DIR.mkdir(parents=True, exist_ok=True)
+HISTORY_DIR = DATA_DIR / "history"
+HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 SQLITE_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -76,6 +78,7 @@ if S3_PREFIX:
 # S3 Tier Prefixes
 S3_BRONZE_PREFIX = f"{S3_PREFIX}bronze/"
 S3_SILVER_PREFIX = f"{S3_PREFIX}silver/"
+S3_HISTORY_PREFIX = f"{S3_PREFIX}history/"
 
 # Amazon DynamoDB Configuration
 DYNAMODB_TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME") or os.getenv("TABLE_NAME", "EU_Clinical")

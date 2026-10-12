@@ -349,6 +349,74 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
         fresh_url = client.resolve_document_s3_url(doc["url"])
         self.assertEqual(fresh_url, "https://s3.example.com/fresh-url?expires=300")
 
+    def test_11_archive_existing_trial_on_update(self):
+        """Verify that updating an existing trial archives the previous copy to history/ without overwriting."""
+        import shutil
+        from ctis_etl import storage, config
+
+        test_ct = "TRIAL-ARCHIVE-TEST"
+        bronze_dir = config.BRONZE_DIR / test_ct
+        silver_dir = config.SILVER_DIR / test_ct
+        history_dir = config.HISTORY_DIR / test_ct
+
+        # Clean any leftover test artifacts
+        for d in (bronze_dir, silver_dir, history_dir):
+            if d.exists():
+                shutil.rmtree(d, ignore_errors=True)
+
+        try:
+            # 1. Ingest Version 1 (New trial -> no archive)
+            v1_raw = {"ctNumber": test_ct, "version": 1, "status": "ORIGINAL"}
+            v1_silver = {
+                "meta_data.json": {"ctNumber": test_ct, "version": 1},
+                "summary.json": {"ctNumber": test_ct, "title": "Version 1 Summary"},
+            }
+            res1 = storage.save_trial_files(test_ct, v1_silver, v1_raw, backend="local")
+            self.assertTrue(all(res1.values()))
+            self.assertFalse(history_dir.exists(), "History folder should not exist for a brand new trial")
+            self.assertTrue((silver_dir / "summary.json").exists())
+
+            # 2. Ingest Version 2 (Update -> should preserve v1 in history/)
+            v2_raw = {"ctNumber": test_ct, "version": 2, "status": "AMENDED"}
+            v2_silver = {
+                "meta_data.json": {"ctNumber": test_ct, "version": 2},
+                "summary.json": {"ctNumber": test_ct, "title": "Version 2 Summary Amended"},
+            }
+            res2 = storage.save_trial_files(test_ct, v2_silver, v2_raw, backend="local")
+            self.assertTrue(all(res2.values()))
+
+            # Verify History Archive was created and contains Version 1
+            self.assertTrue(history_dir.exists(), "History folder must be created on update")
+            archive_timestamps = list(history_dir.iterdir())
+            self.assertEqual(len(archive_timestamps), 1, "Expected exactly 1 archived version snapshot")
+
+            archived_version_dir = archive_timestamps[0]
+            archived_summary = archived_version_dir / "silver" / "summary.json"
+            archived_raw = archived_version_dir / "bronze" / "raw.json"
+            self.assertTrue(archived_summary.exists(), "Archived silver summary.json must exist")
+            self.assertTrue(archived_raw.exists(), "Archived bronze raw.json must exist")
+
+            with open(archived_summary, "r", encoding="utf-8") as f:
+                archived_data = json.load(f)
+            self.assertEqual(archived_data["title"], "Version 1 Summary", "Archive must preserve the OLD version")
+
+            # Verify Active Silver folder now holds Version 2
+            with open(silver_dir / "summary.json", "r", encoding="utf-8") as f:
+                active_data = json.load(f)
+            self.assertEqual(active_data["title"], "Version 2 Summary Amended", "Active silver must have the NEW version")
+
+            # Verify meta_data.json tracked lineage
+            with open(silver_dir / "meta_data.json", "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            self.assertIn("previous_version_archived_at", meta)
+            self.assertTrue(meta.get("is_updated"))
+
+        finally:
+            # Clean up test directories
+            for d in (bronze_dir, silver_dir, history_dir):
+                if d.exists():
+                    shutil.rmtree(d, ignore_errors=True)
+
 
 if __name__ == "__main__":
     unittest.main()

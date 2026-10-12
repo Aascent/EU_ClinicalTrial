@@ -298,8 +298,14 @@ def run_updated_trials(
     updates_queue: List[str] = []
     try:
         discovered = discover_and_stage_recent(client, lookback_days)
-        updates_queue = database.get_pending_trials(filter_type="updates")
-        logger.info(f"Discovered {len(updates_queue)} UPDATED trials ready for re-ingestion.")
+        updates_list = database.get_pending_trials(filter_type="updates")
+        new_list = database.get_pending_trials(filter_type="new")
+        # Ingest both updated trials (old copies archived first) and newly discovered trials
+        updates_queue = updates_list + [ct for ct in new_list if ct not in updates_list]
+        logger.info(
+            f"Discovered {len(updates_queue)} trials ready for sync "
+            f"({len(updates_list)} updates to re-archive, {len(new_list)} new trials)."
+        )
 
         succeeded, failed = _process_trial_queue(client, updates_queue, max_workers, storage_backend)
         run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"

@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ctis_etl import config
 
@@ -133,6 +133,94 @@ sync_trial_documents = resolve_document_download_urls
 
 
 
+def archive_existing_trial(
+    ct_number: str,
+    backend: Optional[str] = None,
+) -> Optional[str]:
+    """Preserves existing trial records (Bronze & Silver) into a dedicated History Archive before updates.
+
+    Structure:
+        Local:  data/history/{ctNumber}/{archive_timestamp}/bronze/raw.json
+                data/history/{ctNumber}/{archive_timestamp}/silver/{filename}.json
+        AWS S3: {S3_HISTORY_PREFIX}{ctNumber}/{archive_timestamp}/bronze/raw.json
+                {S3_HISTORY_PREFIX}{ctNumber}/{archive_timestamp}/silver/{filename}.json
+
+    Returns:
+        Archive timestamp tag string (e.g. '20261012T132000Z') if files were archived, or None if new trial.
+    """
+    backend = (backend or config.STORAGE_BACKEND).lower()
+    save_local = backend in ("local", "both")
+    save_s3 = backend in ("s3", "both")
+
+    local_silver_dir = config.SILVER_DIR / ct_number
+    local_bronze_file = config.BRONZE_DIR / ct_number / "raw.json"
+    has_local = (local_silver_dir.exists() and any(local_silver_dir.glob("*.json"))) or local_bronze_file.exists()
+
+    s3 = get_s3_client() if save_s3 else None
+    s3_objects_to_copy: List[Tuple[str, str]] = []
+    has_s3 = False
+
+    if s3 is not None and save_s3:
+        try:
+            silver_prefix = f"{config.S3_SILVER_PREFIX}{ct_number}/"
+            resp_silver = s3.list_objects_v2(Bucket=config.S3_BUCKET_NAME, Prefix=silver_prefix)
+            for item in resp_silver.get("Contents", []):
+                s3_objects_to_copy.append(("silver", item["Key"]))
+
+            bronze_prefix = f"{config.S3_BRONZE_PREFIX}{ct_number}/"
+            resp_bronze = s3.list_objects_v2(Bucket=config.S3_BUCKET_NAME, Prefix=bronze_prefix)
+            for item in resp_bronze.get("Contents", []):
+                s3_objects_to_copy.append(("bronze", item["Key"]))
+
+            has_s3 = len(s3_objects_to_copy) > 0
+        except Exception as e:
+            logger.debug(f"S3 archive check for {ct_number}: {e}")
+
+    # If neither local nor S3 has existing files, it's a brand new trial -> no archive needed
+    if not has_local and not has_s3:
+        return None
+
+    archive_tag = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    logger.info(f"Existing copy found for trial {ct_number}. Archiving old version to history/{ct_number}/{archive_tag}/ before update.")
+
+    # 1. Local Archive
+    if save_local and has_local:
+        try:
+            archive_silver_dir = config.HISTORY_DIR / ct_number / archive_tag / "silver"
+            archive_bronze_dir = config.HISTORY_DIR / ct_number / archive_tag / "bronze"
+            archive_silver_dir.mkdir(parents=True, exist_ok=True)
+            archive_bronze_dir.mkdir(parents=True, exist_ok=True)
+
+            if local_silver_dir.exists():
+                import shutil
+                for f in local_silver_dir.glob("*.json"):
+                    shutil.copy2(f, archive_silver_dir / f.name)
+
+            if local_bronze_file.exists():
+                import shutil
+                shutil.copy2(local_bronze_file, archive_bronze_dir / local_bronze_file.name)
+        except Exception as e:
+            logger.error(f"Failed local archiving for {ct_number}: {e}")
+
+    # 2. S3 Archive (Fast server-side copy within S3)
+    if s3 is not None and save_s3 and has_s3:
+        try:
+            for tier, source_key in s3_objects_to_copy:
+                filename = source_key.split("/")[-1]
+                target_key = f"{config.S3_HISTORY_PREFIX}{ct_number}/{archive_tag}/{tier}/{filename}"
+                s3.copy_object(
+                    Bucket=config.S3_BUCKET_NAME,
+                    CopySource={"Bucket": config.S3_BUCKET_NAME, "Key": source_key},
+                    Key=target_key,
+                )
+            logger.info(f"Copied {len(s3_objects_to_copy)} existing files in S3 to {config.S3_HISTORY_PREFIX}{ct_number}/{archive_tag}/")
+        except Exception as e:
+            logger.error(f"Failed S3 archiving for {ct_number}: {e}")
+
+    return archive_tag
+
+
+
 def save_trial_files(
     ct_number: str,
     parsed_files: Dict[str, Any],
@@ -140,6 +228,9 @@ def save_trial_files(
     backend: Optional[str] = None,
 ) -> Dict[str, bool]:
     """Persists trial entities across Bronze (raw) and Silver (6 domain files) tiers.
+
+    If an existing version is present in storage, it is safely preserved in the
+    dedicated History Archive before the latest files are written.
 
     Args:
         ct_number: Trial identifier (e.g. '2026-527084-15-00')
@@ -161,6 +252,12 @@ def save_trial_files(
                 if uuid and ct_number and (not doc.get("url") or "amazonaws.com" in str(doc.get("url", ""))):
                     doc["url"] = f"https://euclinicaltrials.eu/ctis-public-api/documents/{ct_number}/{uuid}/download"
                 doc.pop("downloadUrl", None)
+
+    # Preserve old copy to History Archive if trial already exists in storage
+    archive_tag = archive_existing_trial(ct_number, backend=backend)
+    if archive_tag and "meta_data.json" in parsed_files and isinstance(parsed_files["meta_data.json"], dict):
+        parsed_files["meta_data.json"]["previous_version_archived_at"] = archive_tag
+        parsed_files["meta_data.json"]["is_updated"] = True
 
     save_local = backend in ("local", "both")
     save_s3 = backend in ("s3", "both")
