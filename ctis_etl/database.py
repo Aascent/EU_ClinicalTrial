@@ -101,6 +101,76 @@ def init_sqlite_db() -> None:
 _active_run_id: Optional[str] = None
 
 
+def restore_state_from_dynamodb_if_empty() -> int:
+    """Pre-populates SQLite state from DynamoDB if SQLite DB is freshly created or empty.
+
+    Prevents re-fetching trials that have already been persisted to DynamoDB and S3 when
+    containers are destroyed or caches cleared.
+    """
+    if config.STATE_BACKEND not in ("dynamodb", "both"):
+        return 0
+
+    table = get_dynamodb_table()
+    if not table:
+        return 0
+
+    try:
+        init_sqlite_db()
+        with sqlite3.connect(get_sqlite_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM trials")
+            count = cursor.fetchone()[0]
+            if count > 0:
+                return 0  # Already has local state
+
+        logger.info("Local SQLite tracking database is empty. Restoring state from DynamoDB...")
+        scanned_items = []
+        resp = table.scan(
+            ProjectionExpression="ct_number, #st, retry_count, last_publish_date, last_fetched_at, updated_at",
+            ExpressionAttributeNames={"#st": "status"},
+        )
+        scanned_items.extend(resp.get("Items", []))
+        while "LastEvaluatedKey" in resp:
+            resp = table.scan(
+                ProjectionExpression="ct_number, #st, retry_count, last_publish_date, last_fetched_at, updated_at",
+                ExpressionAttributeNames={"#st": "status"},
+                ExclusiveStartKey=resp["LastEvaluatedKey"],
+            )
+            scanned_items.extend(resp.get("Items", []))
+
+        if not scanned_items:
+            return 0
+
+        with sqlite3.connect(get_sqlite_path()) as conn:
+            conn.executemany(
+                """
+                INSERT OR IGNORE INTO trials (
+                    ct_number, status, retry_count, last_publish_date, last_fetched_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        item.get("ct_number") or item.get(config.DYNAMODB_PARTITION_KEY),
+                        item.get("status", "SUCCESS"),
+                        int(item.get("retry_count", 0)),
+                        item.get("last_publish_date"),
+                        item.get("last_fetched_at"),
+                        item.get("created_at", item.get("updated_at", "")),
+                        item.get("updated_at", ""),
+                    )
+                    for item in scanned_items
+                    if (item.get("ct_number") or item.get(config.DYNAMODB_PARTITION_KEY))
+                ],
+            )
+            conn.commit()
+
+        logger.info(f"Successfully restored {len(scanned_items)} trial records from DynamoDB into local SQLite state.")
+        return len(scanned_items)
+    except Exception as e:
+        logger.warning(f"Could not restore state from DynamoDB: {e}")
+        return 0
+
+
 def set_active_run_id(run_id: Optional[str]) -> None:
     """Sets or clears the currently executing pipeline run ID to protect it from stale cleanup."""
     global _active_run_id

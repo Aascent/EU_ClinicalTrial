@@ -178,12 +178,18 @@ class CTISClient:
         self,
         page_size: int = 100,
         sort_property: str = "decisionDate",
+        sort_direction: str = "DESC",
         max_pages: Optional[int] = None,
     ) -> Generator[Dict[str, Any], None, None]:
         """Yields each trial summary item from the Search API sequentially across pages."""
         current_page = 1
         while True:
-            resp = self.search_page(page=current_page, size=page_size, sort_property=sort_property)
+            resp = self.search_page(
+                page=current_page,
+                size=page_size,
+                sort_property=sort_property,
+                sort_direction=sort_direction,
+            )
             data_items = resp.get("data", [])
             pagination = resp.get("pagination", {})
             total_pages = pagination.get("totalPages", current_page)

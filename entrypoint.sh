@@ -35,10 +35,10 @@ python -m http.server 8080 --directory /app/data > /app/logs/webserver.log 2>&1 
 # Publish initial status report immediately
 python -m ctis_etl.main --mode report || true
 
-# Launch startup sync (default: incremental to fetch the latest trials immediately)
+# Launch startup sync (default: historical to ensure full 12,000+ EU CTIS catalog is synchronized)
 if [ "${RUN_ON_STARTUP:-true}" = "true" ]; then
-    STARTUP_MODE="${STARTUP_MODE:-incremental}"
-    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Running initial sync on container startup with mode: ${STARTUP_MODE} (fetching latest data)..."
+    STARTUP_MODE="${STARTUP_MODE:-historical}"
+    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Running initial sync on container startup with mode: ${STARTUP_MODE}..."
     python -m ctis_etl.main --mode "${STARTUP_MODE}"
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Initial sync completed! Dashboard updated with latest data."
 fi

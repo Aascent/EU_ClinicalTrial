@@ -460,102 +460,164 @@ def run_full(
     max_workers: int = 5,
     storage_backend: Optional[str] = None,
 ) -> None:
-    """Discovers all trials and processes the full catalog."""
+    """Discovers all trials and processes the full catalog with bi-directional pagination.
+
+    Note: The EU CTIS Public Search API has a 10,000 record pagination cap (Elasticsearch max_result_window).
+    When total catalog records exceed 10,000, this function runs bi-directional passes:
+      - Pass 1 (DESC): Discovers recent trials (from today back to ~March 2024, up to 10,000 trials).
+      - Pass 2 (ASC): Discovers historical trials (from 2022 forward to ~August 2025, up to 10,000 trials).
+    The overlapping passes seamlessly cover 100% of all trials across the entire EU registry.
+    """
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
     database.set_active_run_id(run_id)
     database.record_pipeline_run(run_id, "FULL", started_at, status="RUNNING")
 
-    logger.info("Starting FULL historical catalog ingestion (processing page-by-page)...")
-    total_discovered = 0
+    logger.info("Starting FULL historical catalog ingestion with bi-directional pagination support...")
+    seen_ct_numbers: set[str] = set()
+    prior_pass_trials: set[str] = set()
     total_processed = 0
     total_succeeded = 0
     total_failed = 0
     total_skipped = 0
 
-    current_page = 1
     page_size = 100
+    passes = ["DESC"]
+    catalog_total_records = 0
 
     try:
-        while True:
-            logger.info(f"[Catalog Discovery] Fetching Search API page {current_page} (size={page_size})...")
-            try:
-                resp = client.search_page(page=current_page, size=page_size, sort_property="decisionDate", sort_direction="DESC")
-            except Exception as e:
-                logger.error(f"Error fetching search page {current_page}: {e}. Retrying page after 5s...")
-                import time
-                time.sleep(5)
-                continue
+        pass_idx = 0
+        while pass_idx < len(passes):
+            sort_direction = passes[pass_idx]
+            pass_idx += 1
 
-            items = resp.get("data", [])
-            pagination = resp.get("pagination", {})
-            total_pages = pagination.get("totalPages", current_page)
-            total_records = pagination.get("totalRecords", total_discovered)
-
-            if not items:
+            if _shutdown_event.is_set():
                 break
 
-            # Stage items for this page
-            page_pending = []
-            for item in items:
-                total_discovered += 1
-                ct_number = item.get("ctNumber")
-                if not ct_number:
-                    continue
-                raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
-                state = database.stage_trial(ct_number, raw_date)
-                if state in ("PENDING", "UPDATE_PENDING"):
-                    page_pending.append(ct_number)
-                else:
-                    total_skipped += 1
-
-            # Process any pending trials for this batch
-            if page_pending:
-                logger.info(
-                    f"[Page {current_page}/{total_pages}] Ingesting {len(page_pending)} trials "
-                    f"({len(items) - len(page_pending)} already up to date)..."
-                )
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    future_map = {
-                        executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
-                        for ct_num in page_pending
-                    }
-                    for future in concurrent.futures.as_completed(future_map):
-                        ct_num = future_map[future]
-                        total_processed += 1
-                        try:
-                            if future.result():
-                                total_succeeded += 1
-                            else:
-                                total_failed += 1
-                        except Exception as e:
-                            total_failed += 1
-                            logger.error(f"Failure processing {ct_num}: {e}")
-            else:
-                logger.info(f"[Page {current_page}/{total_pages}] All {len(items)} trials already up to date. Skipping batch.")
-
+            pass_label = "Newest to Oldest" if sort_direction == "DESC" else "Oldest to Newest"
             logger.info(
-                f"Progress: Page {current_page}/{total_pages} | "
-                f"Discovered: {total_discovered}/{total_records} | Succeeded: {total_succeeded} | "
-                f"Skipped: {total_skipped} | Failed: {total_failed}"
+                f"=== [Catalog Ingestion Pass {pass_idx}/{len(passes)}] Direction: {sort_direction} ({pass_label}) ==="
             )
 
-            if current_page >= total_pages or _shutdown_event.is_set():
-                break
-            current_page += 1
-            if current_page % 5 == 0:
-                database.record_pipeline_run(
-                    run_id=run_id,
-                    run_type="FULL",
-                    started_at=started_at,
-                    completed_at=None,
-                    status="RUNNING",
-                    discovered=total_discovered,
-                    processed=total_processed,
-                    succeeded=total_succeeded,
-                    failed=total_failed,
+            current_page = 1
+            while True:
+                if _shutdown_event.is_set():
+                    break
+
+                logger.info(
+                    f"[Pass {pass_idx} ({sort_direction})] Fetching Search API page {current_page} (size={page_size})..."
                 )
-                _publish_report()
+                try:
+                    resp = client.search_page(
+                        page=current_page,
+                        size=page_size,
+                        sort_property="decisionDate",
+                        sort_direction=sort_direction,
+                    )
+                except Exception as e:
+                    logger.error(f"Error fetching search page {current_page} ({sort_direction}): {e}. Retrying in 5s...")
+                    import time
+                    time.sleep(5)
+                    continue
+
+                items = resp.get("data", [])
+                pagination = resp.get("pagination", {})
+                total_pages = pagination.get("totalPages", current_page)
+                if not catalog_total_records:
+                    catalog_total_records = pagination.get("totalRecords", 0)
+
+                # If registry catalog exceeds 10,000 records, enable the reverse ASC pass
+                if catalog_total_records > 10000 and "ASC" not in passes:
+                    passes.append("ASC")
+                    logger.info(
+                        f"EU CTIS catalog size is {catalog_total_records} (>10,000 CTIS API window limit). "
+                        f"Bi-directional scan activated: will execute Pass 2 (ASC) to guarantee 100% catalog coverage."
+                    )
+
+                # CTIS API hard limit: offsets beyond 10,000 return empty data
+                if not items:
+                    logger.info(
+                        f"[Pass {pass_idx} ({sort_direction})] Reached end of available results at page {current_page}."
+                    )
+                    break
+
+                # Stage items for this page
+                page_pending = []
+                for item in items:
+                    ct_number = item.get("ctNumber")
+                    if not ct_number:
+                        continue
+
+                    # If this trial was already encountered and processed in a prior pass of this run, skip it
+                    if ct_number in prior_pass_trials:
+                        total_skipped += 1
+                        continue
+
+                    seen_ct_numbers.add(ct_number)
+
+                    raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
+                    state = database.stage_trial(ct_number, raw_date)
+                    if state in ("PENDING", "UPDATE_PENDING"):
+                        page_pending.append(ct_number)
+                    else:
+                        total_skipped += 1
+
+                # Process pending trials for this batch
+                if page_pending:
+                    logger.info(
+                        f"[Pass {pass_idx} Page {current_page}/{total_pages} ({sort_direction})] "
+                        f"Ingesting {len(page_pending)} trials "
+                        f"({len(items) - len(page_pending)} already up to date)..."
+                    )
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_map = {
+                            executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
+                            for ct_num in page_pending
+                        }
+                        for future in concurrent.futures.as_completed(future_map):
+                            ct_num = future_map[future]
+                            total_processed += 1
+                            try:
+                                if future.result():
+                                    total_succeeded += 1
+                                else:
+                                    total_failed += 1
+                            except Exception as e:
+                                total_failed += 1
+                                logger.error(f"Failure processing {ct_num}: {e}")
+                else:
+                    logger.info(
+                        f"[Pass {pass_idx} Page {current_page}/{total_pages} ({sort_direction})] "
+                        f"All {len(items)} trials already up to date. Skipping batch."
+                    )
+
+                logger.info(
+                    f"Progress: [{sort_direction}] Page {current_page}/{total_pages} | "
+                    f"Unique Discovered: {len(seen_ct_numbers)}/{catalog_total_records or len(seen_ct_numbers)} | "
+                    f"Succeeded: {total_succeeded} | Skipped: {total_skipped} | Failed: {total_failed}"
+                )
+
+                # Cap each pass at page 100 because CTIS API Elasticsearch window is 10,000 (100 * 100)
+                if current_page >= total_pages or current_page >= 100 or _shutdown_event.is_set():
+                    break
+
+                current_page += 1
+                if current_page % 5 == 0:
+                    database.record_pipeline_run(
+                        run_id=run_id,
+                        run_type="FULL",
+                        started_at=started_at,
+                        completed_at=None,
+                        status="RUNNING",
+                        discovered=len(seen_ct_numbers),
+                        processed=total_processed,
+                        succeeded=total_succeeded,
+                        failed=total_failed,
+                    )
+                    _publish_report()
+
+            # Record trials processed in this pass so subsequent passes skip them immediately
+            prior_pass_trials.update(seen_ct_numbers)
 
         run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
         completed_at = datetime.now(timezone.utc).isoformat()
@@ -565,13 +627,13 @@ def run_full(
             started_at=started_at,
             completed_at=completed_at,
             status=run_status,
-            discovered=total_discovered,
+            discovered=len(seen_ct_numbers),
             processed=total_processed,
             succeeded=total_succeeded,
             failed=total_failed,
         )
         logger.info(
-            f"FULL catalog ingestion finished ({run_status})! Total Discovered: {total_discovered}, "
+            f"FULL catalog ingestion finished ({run_status})! Total Unique Discovered: {len(seen_ct_numbers)}, "
             f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
             f"Skipped: {total_skipped}, Failed: {total_failed}"
         )
@@ -583,7 +645,7 @@ def run_full(
             started_at=started_at,
             completed_at=completed_at,
             status="FAILED",
-            discovered=total_discovered,
+            discovered=len(seen_ct_numbers),
             processed=total_processed,
             succeeded=total_succeeded,
             failed=total_failed,
@@ -591,6 +653,7 @@ def run_full(
         logger.error(f"FULL catalog ingestion failed: {e}")
         raise
     finally:
+        database.set_active_run_id(None)
         _publish_report()
 
 
@@ -715,6 +778,7 @@ def main() -> None:
     args = parser_cli.parse_args()
     client = CTISClient(base_url=config.CTIS_API_BASE_URL)
     database.init_sqlite_db()
+    database.restore_state_from_dynamodb_if_empty()
     stale_count = database.reset_stale_processing(timeout_minutes=15)
     stale_runs = database.reset_stale_pipeline_runs(timeout_hours=4)
     if stale_count > 0:

@@ -10,9 +10,10 @@ services:
     env_file:
       - .env
     environment:
-      # Run incremental sync on startup to immediately pull the latest trials
+      # Run initial sync on container startup
+      # Options: 'historical' (default: full 12,000+ catalog backfill) or 'incremental' (recent daily delta)
       - RUN_ON_STARTUP=true
-      - STARTUP_MODE=incremental
+      - STARTUP_MODE=${STARTUP_MODE:-historical}
       # Cron schedule (Default: Daily at 02:00 AM UTC). Change e.g. to "0 */2 * * *" for every 2 hours
       - CRON_SCHEDULE=0 2 * * *
       - PYTHONUNBUFFERED=1

@@ -267,6 +267,53 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
             shutil.rmtree(config.BRONZE_DIR / test_ct, ignore_errors=True)
         if (config.SILVER_DIR / test_ct).exists():
             shutil.rmtree(config.SILVER_DIR / test_ct, ignore_errors=True)
+    def test_09_bidirectional_catalog_pagination(self):
+        """Verify run_full correctly handles catalogs > 10,000 using bi-directional DESC + ASC passes."""
+        from unittest.mock import MagicMock
+        from ctis_etl import main
+
+        mock_client = MagicMock()
+
+        def mock_search_page(page=1, size=100, sort_property="decisionDate", sort_direction="DESC"):
+            if sort_direction == "DESC":
+                if page == 1:
+                    return {
+                        "data": [{"ctNumber": "TRIAL-DESC-1", "decisionDateOverall": "2026-10-01"}],
+                        "pagination": {"totalRecords": 12594, "totalPages": 126, "currentPage": 1},
+                    }
+                else:
+                    # Page 2 returns empty, simulating reaching the end of the DESC window
+                    return {"data": [], "pagination": {"totalRecords": 0, "totalPages": 0, "currentPage": 0}}
+            else:  # ASC pass
+                if page == 1:
+                    return {
+                        "data": [
+                            {"ctNumber": "TRIAL-ASC-1", "decisionDateOverall": "2022-03-01"},
+                            {"ctNumber": "TRIAL-DESC-1", "decisionDateOverall": "2026-10-01"},  # Overlap trial
+                        ],
+                        "pagination": {"totalRecords": 12594, "totalPages": 126, "currentPage": 1},
+                    }
+                else:
+                    return {"data": [], "pagination": {"totalRecords": 0, "totalPages": 0, "currentPage": 0}}
+
+        mock_client.search_page.side_effect = mock_search_page
+
+        # Track processed trials
+        processed = []
+        original_process = main.process_single_trial
+        main.process_single_trial = lambda client, ct_num, storage_backend=None: processed.append(ct_num) or True
+
+        try:
+            main.run_full(client=mock_client, max_workers=1, storage_backend="local")
+        finally:
+            main.process_single_trial = original_process
+
+        # Verify that both passes executed and all unique trials were discovered and processed
+        self.assertIn("TRIAL-DESC-1", processed)
+        self.assertIn("TRIAL-ASC-1", processed)
+        # Verify deduplication: TRIAL-DESC-1 should only be processed once
+        self.assertEqual(processed.count("TRIAL-DESC-1"), 1)
+        self.assertEqual(len(processed), 2)
 
 
 if __name__ == "__main__":
