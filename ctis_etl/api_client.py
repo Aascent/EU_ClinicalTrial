@@ -82,11 +82,13 @@ class CTISClient:
         url: str,
         method: str = "GET",
         payload: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Executes an HTTP request with connection pooling, exponential backoff, and jitter."""
         if self.request_delay > 0:
             time.sleep(self.request_delay)
 
+        req_headers = {**config.DEFAULT_HEADERS, **(headers or {})}
         data_bytes = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         for attempt in range(1, self.max_retries + 1):
@@ -96,9 +98,9 @@ class CTISClient:
                     import httpx
                     try:
                         if method == "POST":
-                            resp = self._httpx_client.post(url, json=payload)
+                            resp = self._httpx_client.post(url, json=payload, headers=req_headers)
                         else:
-                            resp = self._httpx_client.get(url)
+                            resp = self._httpx_client.get(url, headers=req_headers)
 
                         if resp.status_code in (429, 500, 502, 503, 504):
                             raise httpx.HTTPStatusError(
@@ -128,7 +130,7 @@ class CTISClient:
                 req = urllib.request.Request(
                     url,
                     data=data_bytes,
-                    headers=config.DEFAULT_HEADERS,
+                    headers=req_headers,
                     method=method,
                 )
                 with urllib.request.urlopen(req, timeout=self.read_timeout) as response:
@@ -227,7 +229,10 @@ class CTISClient:
         Note: The returned AWS S3 URL is short-lived (expires in 300 seconds / 5 minutes).
         """
         endpoint = self.get_document_download_url(ct_number, document_uuid)
-        resp = self._execute_request_with_retry(endpoint, method="GET")
+        doc_headers = {
+            "Referer": f"https://euclinicaltrials.eu/ctis-public/view/{ct_number}?lang=en",
+        }
+        resp = self._execute_request_with_retry(endpoint, method="GET", headers=doc_headers)
         s3_url = resp.get("url") if isinstance(resp, dict) else None
         if not s3_url:
             raise CTISAPIError(f"No S3 download URL returned for trial {ct_number} document {document_uuid}: {resp}")
