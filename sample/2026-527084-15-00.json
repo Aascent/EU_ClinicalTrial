@@ -1,0 +1,2368 @@
+{
+    "ctNumber": "2026-527084-15-00",
+    "ctStatus": "Authorised",
+    "decisionDate": "2026-10-07T15:43:07.693",
+    "publishDate": "2026-10-08T03:32:46.650903775",
+    "ctPublicStatusCode": 2,
+    "authorizedApplication": {
+        "authorizedPartI": {
+            "id": 145332,
+            "rowSubjectCount": 0,
+            "products": [
+                {
+                    "id": 607458,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB08483MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "LEVONORGESTREL",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "LEVONORGESTREL",
+                        "euSubstNumber": "SUB08483MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "268222",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "LEVONORGESTREL",
+                                "substanceEvCode": "SUB08483MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "µg microgram(s)",
+                    "maxDailyDoseAmount": "150",
+                    "doseUomTotal": "µg microgram(s)",
+                    "maxTotalDoseAmount": "150",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "150",
+                    "scientificProductEvCode": "SUB08483MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "LEVONORGESTREL",
+                    "jsonActiveSubstanceNames": "levonorgestrel"
+                },
+                {
+                    "id": 607455,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB07003MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "DESOGESTREL",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "DESOGESTREL",
+                        "euSubstNumber": "SUB07003MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "352046",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "DESOGESTREL",
+                                "substanceEvCode": "SUB07003MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "75",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "75",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 75,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB07003MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "DESOGESTREL",
+                    "jsonActiveSubstanceNames": "desogestrel"
+                },
+                {
+                    "id": 607461,
+                    "part1MpRoleTypeCode": "1",
+                    "productDictionaryInfo": {
+                        "productPk": "13599755",
+                        "productPharmForm": "BEVONT TABLETTA",
+                        "euMpNumber": "PRD507948",
+                        "marketingAuthNumber": "OGYI-T-4378/02",
+                        "prodAuthStatus": 2,
+                        "prodName": "Tri-Regol bevont tabletta",
+                        "pharmForm": "COATED TABLET",
+                        "activeSubstanceName": "ETHINYLESTRADIOL, ETHINYLESTRADIOL, ETHINYLESTRADIOL",
+                        "euSubstNumber": "SUB07277MIG, SUB07277MIG, SUB07277MIG",
+                        "authorisationCountryCode": "HU",
+                        "nameOrg": "GEDEON RICHTER PLC.",
+                        "productSubstances": [
+                            {
+                                "productPk": "13599755",
+                                "substancePk": "417668",
+                                "nameOrg": "GEDEON RICHTER PLC.",
+                                "substanceOrigin": "Chemical",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ETHINYLESTRADIOL",
+                                "substanceEvCode": "SUB07277MIG",
+                                "synonyms": [
+                                    "ETHINYLOESTRADIOL",
+                                    "ETHINYL ESTRADIOL",
+                                    "ETHYNYLESTRADIOL"
+                                ]
+                            },
+                            {
+                                "productPk": "13599755",
+                                "substancePk": "417668",
+                                "nameOrg": "GEDEON RICHTER PLC.",
+                                "substanceOrigin": "Chemical",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ETHINYLESTRADIOL",
+                                "substanceEvCode": "SUB07277MIG",
+                                "synonyms": [
+                                    "ETHINYLOESTRADIOL",
+                                    "ETHINYL ESTRADIOL",
+                                    "ETHYNYLESTRADIOL"
+                                ]
+                            },
+                            {
+                                "productPk": "13599755",
+                                "substancePk": "417668",
+                                "nameOrg": "GEDEON RICHTER PLC.",
+                                "substanceOrigin": "Chemical",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ETHINYLESTRADIOL",
+                                "substanceEvCode": "SUB07277MIG",
+                                "synonyms": [
+                                    "ETHINYLOESTRADIOL",
+                                    "ETHINYL ESTRADIOL",
+                                    "ETHYNYLESTRADIOL"
+                                ]
+                            }
+                        ],
+                        "atcCode": "G03AB03",
+                        "atcName": "LEVONORGESTREL AND ESTROGEN",
+                        "atcTermLevel": "5",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "µg microgram(s)",
+                    "maxDailyDoseAmount": "75",
+                    "doseUomTotal": "µg microgram(s)",
+                    "maxTotalDoseAmount": "75",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "evCode": "PRD507948",
+                    "devices": [],
+                    "characteristics": [],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": true,
+                    "productName": "Tri-Regol bevont tabletta",
+                    "jsonActiveSubstanceNames": "ethinylestradiol, ethinylestradiol, ethinylestradiol",
+                    "pharmaceuticalFormDisplay": "COATED TABLET"
+                },
+                {
+                    "id": 607452,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB06413MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "DROSPIRENONE",
+                        "pharmForm": "FILM COATED TABLET",
+                        "activeSubstanceName": "DROSPIRENONE",
+                        "euSubstNumber": "SUB06413MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "350043",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "DROSPIRENONE",
+                                "substanceEvCode": "SUB06413MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "3",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "3",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB06413MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "DROSPIRENONE",
+                    "jsonActiveSubstanceNames": "drospirenone"
+                },
+                {
+                    "id": 607460,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB11941MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "ESTRADIOL HEMIHYDRATE",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "ESTRADIOL HEMIHYDRATE",
+                        "euSubstNumber": "SUB11941MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "406970",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ESTRADIOL HEMIHYDRATE",
+                                "substanceEvCode": "SUB11941MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "1.5",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "1.5",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB11941MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "ESTRADIOL HEMIHYDRATE",
+                    "jsonActiveSubstanceNames": "estradiol hemihydrate"
+                },
+                {
+                    "id": 607453,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB186258",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "ESTETROL",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "ESTETROL",
+                        "euSubstNumber": "SUB186258",
+                        "productSubstances": [
+                            {
+                                "substancePk": "425407",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ESTETROL",
+                                "substanceEvCode": "SUB186258"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "14.2",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "14.2",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB186258",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "ESTETROL",
+                    "jsonActiveSubstanceNames": "estetrol"
+                },
+                {
+                    "id": 607462,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB06413MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "DROSPIRENONE",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "DROSPIRENONE",
+                        "euSubstNumber": "SUB06413MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "197268",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "DROSPIRENONE",
+                                "substanceEvCode": "SUB06413MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "4",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "4",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB06413MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "DROSPIRENONE",
+                    "jsonActiveSubstanceNames": "drospirenone"
+                },
+                {
+                    "id": 607456,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB08483MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "LEVONORGESTREL",
+                        "pharmForm": "INTRAUTERINE DELIVERY SYSTEM",
+                        "activeSubstanceName": "LEVONORGESTREL",
+                        "euSubstNumber": "SUB08483MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "118778",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "LEVONORGESTREL",
+                                "substanceEvCode": "SUB08483MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "µg microgram(s)",
+                    "maxDailyDoseAmount": "20",
+                    "doseUomTotal": "µg microgram(s)",
+                    "maxTotalDoseAmount": "20",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB08483MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "INTRAUTERINE USE"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "LEVONORGESTREL",
+                    "jsonActiveSubstanceNames": "levonorgestrel"
+                },
+                {
+                    "id": 607457,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB07277MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "ETHINYLESTRADIOL",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "ETHINYLESTRADIOL",
+                        "euSubstNumber": "SUB07277MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "96803",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ETHINYLESTRADIOL",
+                                "substanceEvCode": "SUB07277MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "µg microgram(s)",
+                    "maxDailyDoseAmount": "30",
+                    "doseUomTotal": "µg microgram(s)",
+                    "maxTotalDoseAmount": "30",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB07277MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "ETHINYLESTRADIOL",
+                    "jsonActiveSubstanceNames": "ethinylestradiol"
+                },
+                {
+                    "id": 607459,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB03449MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "NOMEGESTROL ACETATE",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "NOMEGESTROL ACETATE",
+                        "euSubstNumber": "SUB03449MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "61529",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "NOMEGESTROL ACETATE",
+                                "substanceEvCode": "SUB03449MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "2.5",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "2.5",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB03449MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "NOMEGESTROL ACETATE",
+                    "jsonActiveSubstanceNames": "nomegestrol acetate"
+                },
+                {
+                    "id": 607454,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB08483MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "LEVONORGESTREL",
+                        "pharmForm": "INTRAUTERINE DELIVERY SYSTEM",
+                        "activeSubstanceName": "LEVONORGESTREL",
+                        "euSubstNumber": "SUB08483MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "118778",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "LEVONORGESTREL",
+                                "substanceEvCode": "SUB08483MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "µg microgram(s)",
+                    "maxDailyDoseAmount": "14",
+                    "doseUomTotal": "µg microgram(s)",
+                    "maxTotalDoseAmount": "14",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB08483MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "INTRAUTERINE USE"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "LEVONORGESTREL",
+                    "jsonActiveSubstanceNames": "levonorgestrel"
+                },
+                {
+                    "id": 607463,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB07277MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "ETHINYLESTRADIOL",
+                        "pharmForm": "FILM-COATED TABLET",
+                        "activeSubstanceName": "ETHINYLESTRADIOL",
+                        "euSubstNumber": "SUB07277MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "90383",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "ETHINYLESTRADIOL",
+                                "substanceEvCode": "SUB07277MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "0.02",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "0.02",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB07277MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "ETHINYLESTRADIOL",
+                    "jsonActiveSubstanceNames": "ethinylestradiol"
+                },
+                {
+                    "id": 607464,
+                    "part1MpRoleTypeCode": "3",
+                    "productDictionaryInfo": {
+                        "euMpNumber": "SUB08483MIG",
+                        "marketingAuthNumber": "-",
+                        "prodAuthStatus": 2,
+                        "prodName": "LEVONORGESTREL",
+                        "pharmForm": "FILM COATED TABLETS",
+                        "activeSubstanceName": "LEVONORGESTREL",
+                        "euSubstNumber": "SUB08483MIG",
+                        "productSubstances": [
+                            {
+                                "substancePk": "194619",
+                                "actSubstOrigin": "Chemical",
+                                "actSubstName": "LEVONORGESTREL",
+                                "substanceEvCode": "SUB08483MIG"
+                            }
+                        ],
+                        "atcCode": "-",
+                        "atcName": "-",
+                        "atcTermLevel": "-",
+                        "activeSubstanceOtherDescriptiveName": ""
+                    },
+                    "isPaediatricFormulation": false,
+                    "mpRoleInTrial": "1",
+                    "orphanDrugEdit": false,
+                    "doseUom": "mg milligram(s)",
+                    "maxDailyDoseAmount": "0.1",
+                    "doseUomTotal": "mg milligram(s)",
+                    "maxTotalDoseAmount": "0.1",
+                    "productChangedRelationMA": false,
+                    "maxTreatmentPeriod": 1,
+                    "timeUnitCode": "1",
+                    "otherMedicinalProduct": "Chemical",
+                    "scientificProductEvCode": "SUB08483MIG",
+                    "devices": [],
+                    "characteristics": [
+                        "11"
+                    ],
+                    "routes": [
+                        "ORAL"
+                    ],
+                    "allSubstancesChemicals": false,
+                    "productName": "LEVONORGESTREL",
+                    "jsonActiveSubstanceNames": "levonorgestrel"
+                }
+            ],
+            "trialDetails": {
+                "clinicalTrialIdentifiers": {
+                    "fullTitle": "Evaluation of Thrombin Generation and Thrombosis Risk in Women on Hormonal Contraceptives with a Focus on Modifiable Risk Factors",
+                    "fullTitleTranslations": [
+                        {
+                            "id": 12372743,
+                            "uuid": "36b002ed-d604-4446-8e80-cca0053ad7ff",
+                            "attributeTranslation": "A trombingeneráció és a trombózis kockázatának értékelése hormonális fogamzásgátlókat használó nők körében, különös tekintettel a módosítható kockázati tényezőkre",
+                            "language": 13,
+                            "languageDescription": "Hungarian"
+                        }
+                    ],
+                    "publicTitle": "Evaluation of Thrombin Generation and Thrombosis Risk in Women on Hormonal Contraceptives with a Focus on Modifiable Risk Factors",
+                    "publicTitleTranslations": [],
+                    "secondaryIdentifyingNumbers": {
+                        "additionalRegistries": []
+                    }
+                },
+                "trialInformation": {
+                    "trialCategory": {
+                        "isLowIntervention": true,
+                        "justificationOfLowIntervention": "This clinical trial is considered a low-intervention clinical trial according to Article 2(2)(3) of Regulation (EU) No 536/2014. The detailed justification is as follows:  -\tThe investigational medicinal products (hormonal contraceptives) are already authorised.  -\tAccording to the protocol, the investigational medicinal products are being used strictly in accordance with the terms of their respective marketing authorisations.  -\tThe additional diagnostic procedures (single venous blood draw of 17 mL for routine and specific laboratory testing) do not pose more than minimal additional risk or burden to the safety of the subjects compared to normal clinical practice.",
+                        "trialPhase": "6",
+                        "trialCategory": "3",
+                        "justificationForTrialCategory": "This clinical trial is considered a low-intervention clinical trial according to Article 2(2)(3) of Regulation (EU) No 536/2014. The justification is as follows: 1) The investigational medicinal products (hormonal contraceptives) are already authorised. 2) According to the protocol, the IMPs are being used strictly in accordance with the terms of their respective marketing authorisations. 3) The additional diagnostic procedures (single venous blood draw of 17 mL for routine and specific laboratory testing) do not pose more than minimal additional risk or burden to the safety of the subjects compared to normal clinical practice.",
+                        "trialCategoryId": 134597
+                    },
+                    "medicalCondition": {
+                        "partIMedicalConditions": [
+                            {
+                                "id": 152500,
+                                "medicalCondition": "Venous Thromboembolism Risk associated with Hormonal Contraceptives",
+                                "medicalConditionTranslations": [],
+                                "isConditionRareDisease": false
+                            }
+                        ],
+                        "meddraConditionTerms": [
+                            {
+                                "termId": 200000010317,
+                                "version": "22.0",
+                                "level": "PT",
+                                "termName": "Intrauterine contraception",
+                                "classificationCode": "10082352",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 100000022198,
+                                "version": "21.1",
+                                "level": "PT",
+                                "termName": "Oral contraception",
+                                "classificationCode": "10030970",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 200000010317,
+                                "version": "22.0",
+                                "level": "PT",
+                                "termName": "Intrauterine contraception",
+                                "classificationCode": "10082352",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 100000022218,
+                                "version": "20.0",
+                                "level": "PT",
+                                "termName": "Contraception",
+                                "classificationCode": "10010808",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 100000022218,
+                                "version": "20.0",
+                                "level": "PT",
+                                "termName": "Contraception",
+                                "classificationCode": "10010808",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 100000022198,
+                                "version": "21.1",
+                                "level": "PT",
+                                "termName": "Oral contraception",
+                                "classificationCode": "10030970",
+                                "organClass": 100000004865,
+                                "active": false
+                            },
+                            {
+                                "termId": 200000031874,
+                                "version": "26.0",
+                                "level": "LLT",
+                                "termName": "Clinical trial healthy volunteer",
+                                "classificationCode": "10088820",
+                                "organClass": 100000004848,
+                                "active": false
+                            }
+                        ]
+                    },
+                    "trialObjective": {
+                        "trialScopes": [
+                            {
+                                "code": "4",
+                                "trialScopeId": 442607
+                            }
+                        ],
+                        "mainObjective": "This proposal focuses on evaluating thrombin generation and thrombosis risk in women on different forms of hormonal contraceptives, with a particular emphasis on modifiable risk factors that influence thrombosis risk. The study aims to identify actionable predictors for VTE risk, paving the way for personalized risk assessment and management strategies.To assess thrombin generation profiles and prethrombotic state in women using different formulations of hormonal contraceptives.To compare thrombin generation parameters between HC users and non-users.",
+                        "mainObjectiveTranslations": [],
+                        "secondaryObjectives": [
+                            {
+                                "id": 521893,
+                                "number": 1,
+                                "secondaryObjective": "To identify and evaluate modifiable risk factors (e.g., smoking, BMI, physical activity, inflammation) influencing thrombin generation and thrombosis risk in HC users.",
+                                "secondaryObjectiveTranslations": []
+                            }
+                        ]
+                    },
+                    "eligibilityCriteria": {
+                        "principalInclusionCriteria": [
+                            {
+                                "id": 991991,
+                                "number": 1,
+                                "principalInclusionCriteria": "Women aged 18-40 years",
+                                "principalInclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 991992,
+                                "number": 2,
+                                "principalInclusionCriteria": "Current user of HC for at least 3 months/ Healthy non-users of HCs for at least 3 months as a control group",
+                                "principalInclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 991993,
+                                "number": 3,
+                                "principalInclusionCriteria": "Signed informed consent",
+                                "principalInclusionCriteriaTranslations": []
+                            }
+                        ],
+                        "principalExclusionCriteria": [
+                            {
+                                "id": 1693208,
+                                "number": 1,
+                                "principalExclusionCriteria": "History of venous/arterial thromboembolic disorders",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693209,
+                                "number": 2,
+                                "principalExclusionCriteria": "History of unexplained bleeding or hemophilia",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693210,
+                                "number": 3,
+                                "principalExclusionCriteria": "Current use of anticoagulants/antiplatelets including NSAIDs in the past 10 days",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693211,
+                                "number": 4,
+                                "principalExclusionCriteria": "Pregnancy or breastfeeding",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693212,
+                                "number": 5,
+                                "principalExclusionCriteria": "Malignant disease within the past 5 years",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693213,
+                                "number": 6,
+                                "principalExclusionCriteria": "Autoimmune disease influencing thrombotic risk (e.g. inflammatory bowel disease, SLE, etc)",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693214,
+                                "number": 7,
+                                "principalExclusionCriteria": "Acute inflammation (including acute respiratory diseases, e.g. COVID-19, flu, RSV, etc)",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693215,
+                                "number": 8,
+                                "principalExclusionCriteria": "Chronic kidney/liver disase",
+                                "principalExclusionCriteriaTranslations": []
+                            },
+                            {
+                                "id": 1693216,
+                                "number": 9,
+                                "principalExclusionCriteria": "Major surgery within the past 3 months",
+                                "principalExclusionCriteriaTranslations": []
+                            }
+                        ]
+                    },
+                    "endPoint": {
+                        "primaryEndPoints": [
+                            {
+                                "id": 1159518,
+                                "number": 1,
+                                "endPoint": "The normalized activated protein C sensitivity ratio (nAPCsr), determined by calibrated automated thrombography (CAT) assay, evaluated as the quantifiable difference in group means (expressed as absolute and percentage differences with 95% confidence intervals) between each hormonal contraceptive (HC) user subgroup and the healthy non-user control group.",
+                                "isPrimary": true,
+                                "endPointTranslations": []
+                            }
+                        ],
+                        "secondaryEndPoints": [
+                            {
+                                "id": 1159519,
+                                "number": 1,
+                                "endPoint": "Evaluation of individual thrombin generation parameters, standard coagulation screening tests, routine laboratory parameters, and prothrombotic markers. Secondary outcomes also encompass markers of endothelial activation, fibrinolytic capacity, inflammatory cytokines/chemokines, and inherited thrombophilia screening. Furthermore, secondary analyses include the quantitative evaluation of the influence of modifiable risk factors on hemostatic balance and thrombosis risk across the study cohorts.",
+                                "isPrimary": false,
+                                "endPointTranslations": []
+                            }
+                        ]
+                    },
+                    "trialDuration": {
+                        "estimatedEndDate": "2029-07-31",
+                        "estimatedRecruitmentStartDate": "2026-09-01"
+                    },
+                    "sourceOfMonetarySupport": [
+                        {
+                            "id": 107190,
+                            "organisationName": "University of Debrecen"
+                        }
+                    ],
+                    "populationOfTrialSubjects": {
+                        "ageRanges": [
+                            {
+                                "id": 399737,
+                                "ageRangeCategoryCode": "3",
+                                "ageRangeCategory": "3"
+                            }
+                        ],
+                        "ageRangeSecondaryIds": [],
+                        "clinicalTrialGroups": [
+                            {
+                                "code": "1",
+                                "name": "Healthy volunteers"
+                            }
+                        ],
+                        "isFemaleSubjects": true,
+                        "isMaleSubjects": false,
+                        "isVulnerablePopulationSelected": false
+                    },
+                    "individualParticipantData": {
+                        "planToShareIPD": "3",
+                        "planDescription": "Pseudonymised or anonymised individual participant data may be shared for future scientific research purposes, strictly depending on the specific option the participant selected regarding biobank storage and future research use in their signed Informed Consent Form."
+                    }
+                },
+                "protocolInformation": {
+                    "studyDesign": {
+                        "periodDetails": [
+                            {
+                                "id": 206639,
+                                "businessKey": "1",
+                                "title": "Single clinical visit",
+                                "description": "Cross-sectional evaluation involving a single venous blood draw and completion of standardized questionnaires.",
+                                "blindingMethodCode": "3",
+                                "blindedRoles": [],
+                                "armDetails": [
+                                    {
+                                        "description": "Healthy non-users of hormonal contraceptives for at least 3 months",
+                                        "title": "Control group",
+                                        "id": 114567
+                                    },
+                                    {
+                                        "description": "Estetrol/drospirenone users",
+                                        "title": "E4/DRSP group",
+                                        "id": 114568
+                                    },
+                                    {
+                                        "description": "Nomegestrol acetate/estradiol users",
+                                        "title": "E2/NOMAC group",
+                                        "id": 114569
+                                    },
+                                    {
+                                        "description": "Ethinyl estradiol/levonorgestrel (20 µg EE) users",
+                                        "title": "EE/LNG (20 µg EE) group",
+                                        "id": 114570
+                                    },
+                                    {
+                                        "description": "Ethinyl estradiol/levonorgestrel (30 µg EE) users",
+                                        "title": "EE/LNG (30 µg EE) group",
+                                        "id": 114571
+                                    },
+                                    {
+                                        "description": "Levonorgestrel intrauterine system users",
+                                        "title": "LNG-IUS group",
+                                        "id": 114572
+                                    },
+                                    {
+                                        "description": "Desogestrel (DSG) or drospirenone (DRSP) progestin-only pill users",
+                                        "title": "POP group",
+                                        "id": 114573
+                                    }
+                                ],
+                                "allocationMethod": "2"
+                            }
+                        ]
+                    }
+                },
+                "scientificAdviceAndPip": {
+                    "scientificAdvices": [],
+                    "paediatricInvestigationPlan": []
+                },
+                "associatedClinicalTrials": [],
+                "references": [],
+                "pubmedCode": [],
+                "pubmedUrl": []
+            },
+            "assessmentOutcome": "acceptable",
+            "assessmentOutcomeDate": "2026-09-28",
+            "conclusionDate": "2026-09-28",
+            "therapeuticAreas": [
+                {
+                    "code": "14",
+                    "name": "Diseases [C] - Cardiovascular Diseases [C14]"
+                }
+            ],
+            "medicalConditions": [
+                {
+                    "id": 152500,
+                    "medicalCondition": "Venous Thromboembolism Risk associated with Hormonal Contraceptives",
+                    "isConditionRareDisease": false
+                }
+            ],
+            "sponsors": [
+                {
+                    "id": 165763,
+                    "primary": true,
+                    "publicContacts": [
+                        {
+                            "id": 489556,
+                            "type": "Public",
+                            "functionalName": "Dr. Zsuzsa Bagoly",
+                            "functionalEmailAddress": "bagoly@med.unideb.hu",
+                            "telephone": "+3652411717",
+                            "organisation": {
+                                "id": 1012550,
+                                "type": "Educational Institution",
+                                "typeCode": "1",
+                                "name": "University Of Debrecen",
+                                "commercial": true,
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "ORG-100000129",
+                                "organisationLocationStatus": "Active"
+                            }
+                        }
+                    ],
+                    "scientificContacts": [
+                        {
+                            "id": 489557,
+                            "type": "Scientific",
+                            "functionalName": "Dr. Zsuzsa Bagoly",
+                            "functionalEmailAddress": "bagoly@med.unideb.hu",
+                            "telephone": "+3652411717",
+                            "organisation": {
+                                "id": 1012550,
+                                "type": "Educational Institution",
+                                "typeCode": "1",
+                                "name": "University Of Debrecen",
+                                "commercial": true,
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "ORG-100000129",
+                                "organisationLocationStatus": "Active"
+                            }
+                        }
+                    ],
+                    "thirdParties": [
+                        {
+                            "id": 761801,
+                            "organisationAddress": {
+                                "id": 996536,
+                                "organisation": {
+                                    "id": 1040259,
+                                    "type": "Educational Institution",
+                                    "typeCode": "1",
+                                    "name": "Universite de Namur",
+                                    "commercial": true,
+                                    "isBusinessKeyValidated": true,
+                                    "businessKey": "ORG-100031243",
+                                    "organisationLocationStatus": "Active"
+                                },
+                                "address": {
+                                    "addressId": 1123181,
+                                    "oneLine": "Rue De Bruxelles 61",
+                                    "addressLine1": "Rue De Bruxelles 61",
+                                    "addressLine2": "",
+                                    "addressLine3": "",
+                                    "addressLine4": "",
+                                    "city": "Namur",
+                                    "postcode": "5000",
+                                    "country": 2002,
+                                    "countryName": "Belgium"
+                                },
+                                "phone": "003281724291",
+                                "email": "jonathan.douxfils@unamur.be",
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "LOC-100049022"
+                            },
+                            "sponsorDuties": [
+                                {
+                                    "id": 1179477,
+                                    "code": "4"
+                                }
+                            ],
+                            "phoneNumber": "003281724291",
+                            "email": "jonathan.douxfils@unamur.be"
+                        }
+                    ],
+                    "organisation": {
+                        "id": 1012550,
+                        "type": "Educational Institution",
+                        "typeCode": "1",
+                        "name": "University Of Debrecen",
+                        "commercial": true,
+                        "isBusinessKeyValidated": true,
+                        "businessKey": "ORG-100000129",
+                        "organisationLocationStatus": "Active"
+                    },
+                    "addresses": [
+                        {
+                            "id": 969108,
+                            "organisation": {
+                                "id": 1012550,
+                                "type": "Educational Institution",
+                                "typeCode": "1",
+                                "name": "University Of Debrecen",
+                                "commercial": true,
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "ORG-100000129",
+                                "organisationLocationStatus": "Active"
+                            },
+                            "address": {
+                                "addressId": 1090453,
+                                "oneLine": "Nagyerdei Korut 98",
+                                "addressLine1": "Nagyerdei Korut 98",
+                                "addressLine2": "",
+                                "addressLine3": "",
+                                "addressLine4": "",
+                                "city": "Debrecen",
+                                "postcode": "4032",
+                                "country": 2015,
+                                "countryName": "Hungary"
+                            },
+                            "isBusinessKeyValidated": true,
+                            "businessKey": "ORG-100000129"
+                        }
+                    ],
+                    "isCommercial": false,
+                    "commercial": "Non-Commercial"
+                }
+            ],
+            "trialCategoryCode": "3",
+            "trialCategoryJustificationComment": "This clinical trial is considered a low-intervention clinical trial according to Article 2(2)(3) of Regulation (EU) No 536/2014. The justification is as follows: 1) The investigational medicinal products (hormonal contraceptives) are already authorised. 2) According to the protocol, the IMPs are being used strictly in accordance with the terms of their respective marketing authorisations. 3) The additional diagnostic procedures (single venous blood draw of 17 mL for routine and specific laboratory testing) do not pose more than minimal additional risk or burden to the safety of the subjects compared to normal clinical practice.",
+            "partOneTherapeuticAreas": [
+                {
+                    "id": 1254740,
+                    "therapeuticArea": {
+                        "code": "14",
+                        "name": "Diseases [C] - Cardiovascular Diseases [C14]"
+                    }
+                }
+            ],
+            "productRoleGroupInfos": [
+                {
+                    "id": 449921,
+                    "comments": "DROSPIRENONE",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607462,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB06413MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "DROSPIRENONE",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "DROSPIRENONE",
+                                "euSubstNumber": "SUB06413MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "197268",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "DROSPIRENONE",
+                                        "substanceEvCode": "SUB06413MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "4",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "4",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB06413MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "DROSPIRENONE",
+                            "jsonActiveSubstanceNames": "drospirenone"
+                        }
+                    ]
+                },
+                {
+                    "id": 449920,
+                    "comments": "Tri-Regol bevont tabletta",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607461,
+                            "part1MpRoleTypeCode": "1",
+                            "productDictionaryInfo": {
+                                "productPk": "13599755",
+                                "productPharmForm": "BEVONT TABLETTA",
+                                "euMpNumber": "PRD507948",
+                                "marketingAuthNumber": "OGYI-T-4378/02",
+                                "prodAuthStatus": 2,
+                                "prodName": "Tri-Regol bevont tabletta",
+                                "pharmForm": "COATED TABLET",
+                                "activeSubstanceName": "ETHINYLESTRADIOL, ETHINYLESTRADIOL, ETHINYLESTRADIOL",
+                                "euSubstNumber": "SUB07277MIG, SUB07277MIG, SUB07277MIG",
+                                "authorisationCountryCode": "HU",
+                                "nameOrg": "GEDEON RICHTER PLC.",
+                                "productSubstances": [
+                                    {
+                                        "productPk": "13599755",
+                                        "substancePk": "417668",
+                                        "nameOrg": "GEDEON RICHTER PLC.",
+                                        "substanceOrigin": "Chemical",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ETHINYLESTRADIOL",
+                                        "substanceEvCode": "SUB07277MIG",
+                                        "synonyms": [
+                                            "ETHINYLOESTRADIOL",
+                                            "ETHINYL ESTRADIOL",
+                                            "ETHYNYLESTRADIOL"
+                                        ]
+                                    },
+                                    {
+                                        "productPk": "13599755",
+                                        "substancePk": "417668",
+                                        "nameOrg": "GEDEON RICHTER PLC.",
+                                        "substanceOrigin": "Chemical",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ETHINYLESTRADIOL",
+                                        "substanceEvCode": "SUB07277MIG",
+                                        "synonyms": [
+                                            "ETHINYLOESTRADIOL",
+                                            "ETHINYL ESTRADIOL",
+                                            "ETHYNYLESTRADIOL"
+                                        ]
+                                    },
+                                    {
+                                        "productPk": "13599755",
+                                        "substancePk": "417668",
+                                        "nameOrg": "GEDEON RICHTER PLC.",
+                                        "substanceOrigin": "Chemical",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ETHINYLESTRADIOL",
+                                        "substanceEvCode": "SUB07277MIG",
+                                        "synonyms": [
+                                            "ETHINYLOESTRADIOL",
+                                            "ETHINYL ESTRADIOL",
+                                            "ETHYNYLESTRADIOL"
+                                        ]
+                                    }
+                                ],
+                                "atcCode": "G03AB03",
+                                "atcName": "LEVONORGESTREL AND ESTROGEN",
+                                "atcTermLevel": "5",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "µg microgram(s)",
+                            "maxDailyDoseAmount": "75",
+                            "doseUomTotal": "µg microgram(s)",
+                            "maxTotalDoseAmount": "75",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "evCode": "PRD507948",
+                            "devices": [],
+                            "characteristics": [],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": true,
+                            "productName": "Tri-Regol bevont tabletta",
+                            "jsonActiveSubstanceNames": "ethinylestradiol, ethinylestradiol, ethinylestradiol",
+                            "pharmaceuticalFormDisplay": "COATED TABLET"
+                        }
+                    ]
+                },
+                {
+                    "id": 449915,
+                    "comments": "LEVONORGESTREL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607454,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB08483MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "LEVONORGESTREL",
+                                "pharmForm": "INTRAUTERINE DELIVERY SYSTEM",
+                                "activeSubstanceName": "LEVONORGESTREL",
+                                "euSubstNumber": "SUB08483MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "118778",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "LEVONORGESTREL",
+                                        "substanceEvCode": "SUB08483MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "µg microgram(s)",
+                            "maxDailyDoseAmount": "14",
+                            "doseUomTotal": "µg microgram(s)",
+                            "maxTotalDoseAmount": "14",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB08483MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "INTRAUTERINE USE"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "LEVONORGESTREL",
+                            "jsonActiveSubstanceNames": "levonorgestrel"
+                        }
+                    ]
+                },
+                {
+                    "id": 449919,
+                    "comments": "NOMEGESTROL ACETATE, ESTRADIOL HEMIHYDRATE",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607459,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB03449MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "NOMEGESTROL ACETATE",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "NOMEGESTROL ACETATE",
+                                "euSubstNumber": "SUB03449MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "61529",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "NOMEGESTROL ACETATE",
+                                        "substanceEvCode": "SUB03449MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "2.5",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "2.5",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB03449MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "NOMEGESTROL ACETATE",
+                            "jsonActiveSubstanceNames": "nomegestrol acetate"
+                        },
+                        {
+                            "id": 607460,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB11941MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "ESTRADIOL HEMIHYDRATE",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "ESTRADIOL HEMIHYDRATE",
+                                "euSubstNumber": "SUB11941MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "406970",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ESTRADIOL HEMIHYDRATE",
+                                        "substanceEvCode": "SUB11941MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "1.5",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "1.5",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB11941MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "ESTRADIOL HEMIHYDRATE",
+                            "jsonActiveSubstanceNames": "estradiol hemihydrate"
+                        }
+                    ]
+                },
+                {
+                    "id": 449914,
+                    "comments": "DROSPIRENONE, ESTETROL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607452,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB06413MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "DROSPIRENONE",
+                                "pharmForm": "FILM COATED TABLET",
+                                "activeSubstanceName": "DROSPIRENONE",
+                                "euSubstNumber": "SUB06413MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "350043",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "DROSPIRENONE",
+                                        "substanceEvCode": "SUB06413MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "3",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "3",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB06413MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "DROSPIRENONE",
+                            "jsonActiveSubstanceNames": "drospirenone"
+                        },
+                        {
+                            "id": 607453,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB186258",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "ESTETROL",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "ESTETROL",
+                                "euSubstNumber": "SUB186258",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "425407",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ESTETROL",
+                                        "substanceEvCode": "SUB186258"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "14.2",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "14.2",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB186258",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "ESTETROL",
+                            "jsonActiveSubstanceNames": "estetrol"
+                        }
+                    ]
+                },
+                {
+                    "id": 449922,
+                    "comments": "ETHINYLESTRADIOL, LEVONORGESTREL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607463,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB07277MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "ETHINYLESTRADIOL",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "ETHINYLESTRADIOL",
+                                "euSubstNumber": "SUB07277MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "90383",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ETHINYLESTRADIOL",
+                                        "substanceEvCode": "SUB07277MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "0.02",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "0.02",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB07277MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "ETHINYLESTRADIOL",
+                            "jsonActiveSubstanceNames": "ethinylestradiol"
+                        },
+                        {
+                            "id": 607464,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB08483MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "LEVONORGESTREL",
+                                "pharmForm": "FILM COATED TABLETS",
+                                "activeSubstanceName": "LEVONORGESTREL",
+                                "euSubstNumber": "SUB08483MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "194619",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "LEVONORGESTREL",
+                                        "substanceEvCode": "SUB08483MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "0.1",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "0.1",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB08483MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "LEVONORGESTREL",
+                            "jsonActiveSubstanceNames": "levonorgestrel"
+                        }
+                    ]
+                },
+                {
+                    "id": 449916,
+                    "comments": "DESOGESTREL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607455,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB07003MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "DESOGESTREL",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "DESOGESTREL",
+                                "euSubstNumber": "SUB07003MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "352046",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "DESOGESTREL",
+                                        "substanceEvCode": "SUB07003MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "mg milligram(s)",
+                            "maxDailyDoseAmount": "75",
+                            "doseUomTotal": "mg milligram(s)",
+                            "maxTotalDoseAmount": "75",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 75,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB07003MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "DESOGESTREL",
+                            "jsonActiveSubstanceNames": "desogestrel"
+                        }
+                    ]
+                },
+                {
+                    "id": 449917,
+                    "comments": "LEVONORGESTREL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607456,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB08483MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "LEVONORGESTREL",
+                                "pharmForm": "INTRAUTERINE DELIVERY SYSTEM",
+                                "activeSubstanceName": "LEVONORGESTREL",
+                                "euSubstNumber": "SUB08483MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "118778",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "LEVONORGESTREL",
+                                        "substanceEvCode": "SUB08483MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "µg microgram(s)",
+                            "maxDailyDoseAmount": "20",
+                            "doseUomTotal": "µg microgram(s)",
+                            "maxTotalDoseAmount": "20",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB08483MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "INTRAUTERINE USE"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "LEVONORGESTREL",
+                            "jsonActiveSubstanceNames": "levonorgestrel"
+                        }
+                    ]
+                },
+                {
+                    "id": 449918,
+                    "comments": "ETHINYLESTRADIOL, LEVONORGESTREL",
+                    "productRoleCode": "1",
+                    "productRoleName": "Test",
+                    "products": [
+                        {
+                            "id": 607457,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB07277MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "ETHINYLESTRADIOL",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "ETHINYLESTRADIOL",
+                                "euSubstNumber": "SUB07277MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "96803",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "ETHINYLESTRADIOL",
+                                        "substanceEvCode": "SUB07277MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "µg microgram(s)",
+                            "maxDailyDoseAmount": "30",
+                            "doseUomTotal": "µg microgram(s)",
+                            "maxTotalDoseAmount": "30",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "Chemical",
+                            "scientificProductEvCode": "SUB07277MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "ETHINYLESTRADIOL",
+                            "jsonActiveSubstanceNames": "ethinylestradiol"
+                        },
+                        {
+                            "id": 607458,
+                            "part1MpRoleTypeCode": "3",
+                            "productDictionaryInfo": {
+                                "euMpNumber": "SUB08483MIG",
+                                "marketingAuthNumber": "-",
+                                "prodAuthStatus": 2,
+                                "prodName": "LEVONORGESTREL",
+                                "pharmForm": "FILM-COATED TABLET",
+                                "activeSubstanceName": "LEVONORGESTREL",
+                                "euSubstNumber": "SUB08483MIG",
+                                "productSubstances": [
+                                    {
+                                        "substancePk": "268222",
+                                        "actSubstOrigin": "Chemical",
+                                        "actSubstName": "LEVONORGESTREL",
+                                        "substanceEvCode": "SUB08483MIG"
+                                    }
+                                ],
+                                "atcCode": "-",
+                                "atcName": "-",
+                                "atcTermLevel": "-",
+                                "activeSubstanceOtherDescriptiveName": ""
+                            },
+                            "isPaediatricFormulation": false,
+                            "mpRoleInTrial": "1",
+                            "orphanDrugEdit": false,
+                            "doseUom": "µg microgram(s)",
+                            "maxDailyDoseAmount": "150",
+                            "doseUomTotal": "µg microgram(s)",
+                            "maxTotalDoseAmount": "150",
+                            "productChangedRelationMA": false,
+                            "maxTreatmentPeriod": 1,
+                            "timeUnitCode": "1",
+                            "otherMedicinalProduct": "150",
+                            "scientificProductEvCode": "SUB08483MIG",
+                            "devices": [],
+                            "characteristics": [
+                                "11"
+                            ],
+                            "routes": [
+                                "ORAL"
+                            ],
+                            "allSubstancesChemicals": false,
+                            "productName": "LEVONORGESTREL",
+                            "jsonActiveSubstanceNames": "levonorgestrel"
+                        }
+                    ]
+                }
+            ],
+            "isLowIntervention": true
+        },
+        "authorizedPartsII": [
+            {
+                "id": 341960,
+                "mscId": 60908,
+                "mscInfo": {
+                    "id": 60908,
+                    "clinicalTrialId": 29043,
+                    "countryOrganisationId": 2015,
+                    "reportingStatusCode": "Authorised",
+                    "fromDate": "2026-09-23",
+                    "toDate": "2026-09-23",
+                    "isProposedRms": true,
+                    "countryName": "Hungary",
+                    "organisationInfo": {},
+                    "firstDecisionDate": "2026-10-07",
+                    "trialStatus": "Authorised",
+                    "trialPeriod": [],
+                    "trialRecruitmentPeriod": [],
+                    "hasRecruitmentStarted": false,
+                    "activeTrialPeriod": {},
+                    "activeTrialRecruitmentPeriod": {},
+                    "isWillingAtDayThreeView": false,
+                    "clinicalTrialStatusHistory": [
+                        {
+                            "id": 457385,
+                            "mscId": 60908,
+                            "trialStatus": "Under evaluation",
+                            "trialStatusDate": "2026-08-07T19:11:22.354"
+                        },
+                        {
+                            "id": 511167,
+                            "mscId": 60908,
+                            "trialStatus": "Authorised",
+                            "trialStatusDate": "2026-10-07T15:43:07.363"
+                        }
+                    ],
+                    "applicationTypeMsc": "1",
+                    "mscName": "Hungary",
+                    "assessmentOutcome": "acceptable",
+                    "assessmentOutcomeDate": "2026-10-02",
+                    "decision": "authorized",
+                    "decisionDate": "2026-10-07"
+                },
+                "decisionDate": "2026-10-07",
+                "recruitmentSubjectCount": 350,
+                "trialSites": [
+                    {
+                        "id": 2403226,
+                        "organisationAddressInfo": {
+                            "id": 969148,
+                            "organisation": {
+                                "id": 1012590,
+                                "type": "Educational Institution",
+                                "typeCode": "1",
+                                "name": "University Of Debrecen",
+                                "commercial": true,
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "ORG-100000129",
+                                "organisationLocationStatus": "Active"
+                            },
+                            "address": {
+                                "addressId": 1090503,
+                                "oneLine": "Nagyerdei Korut 98",
+                                "addressLine1": "Nagyerdei Korut 98",
+                                "addressLine2": "",
+                                "addressLine3": "",
+                                "addressLine4": "",
+                                "city": "Debrecen",
+                                "postcode": "4032",
+                                "country": 2015,
+                                "countryName": "Hungary"
+                            },
+                            "phone": "+3652411717",
+                            "email": "bagoly@med.unideb.hu",
+                            "isBusinessKeyValidated": true,
+                            "businessKey": "ORG-100000129"
+                        },
+                        "personInfo": {
+                            "id": 2663728,
+                            "firstName": "Zsuzsa",
+                            "lastName": "Bagoly",
+                            "telephone": "+3652411717",
+                            "email": "bagoly@med.unideb.hu",
+                            "title": "1"
+                        },
+                        "departmentName": "Department of Laboratory Medicine"
+                    },
+                    {
+                        "id": 2403227,
+                        "organisationAddressInfo": {
+                            "id": 984083,
+                            "organisation": {
+                                "id": 1027584,
+                                "type": "Educational Institution",
+                                "typeCode": "1",
+                                "name": "University Of Debrecen",
+                                "commercial": true,
+                                "isBusinessKeyValidated": true,
+                                "businessKey": "ORG-100000129",
+                                "organisationLocationStatus": "Active"
+                            },
+                            "address": {
+                                "addressId": 1108359,
+                                "oneLine": "Nagyerdei Korut 98",
+                                "addressLine1": "Nagyerdei Korut 98",
+                                "addressLine2": "",
+                                "addressLine3": "",
+                                "addressLine4": "",
+                                "city": "Debrecen",
+                                "postcode": "4032",
+                                "country": 2015,
+                                "countryName": "Hungary"
+                            },
+                            "phone": "+3652411600",
+                            "email": "krasznai.zoard@med.unideb.hu",
+                            "isBusinessKeyValidated": true,
+                            "businessKey": "ORG-100000129"
+                        },
+                        "personInfo": {
+                            "id": 2663729,
+                            "firstName": "Zoárd",
+                            "lastName": "Krasznai",
+                            "telephone": "+3652411600",
+                            "email": "krasznai.zoard@med.unideb.hu",
+                            "title": "1"
+                        },
+                        "departmentName": "Department of Obstetrics and Gynaecology"
+                    }
+                ],
+                "applicationStatusCode": "Authorised"
+            }
+        ],
+        "applicationInfo": [
+            {
+                "id": 85315,
+                "type": "INITIAL",
+                "status": "Authorised",
+                "ctNumber": "2026-527084-15-00",
+                "trialStatus": "Authorised",
+                "submissionDate": "2026-08-07",
+                "partI": {
+                    "assessmentOutcome": "acceptable",
+                    "assessmentOutcomeDate": "2026-09-28"
+                },
+                "partIIInfo": [
+                    {
+                        "id": 341960,
+                        "mscId": 60908,
+                        "mscInfo": {
+                            "id": 60908,
+                            "mscName": "Hungary",
+                            "countryOrganisationId": 2015,
+                            "assessmentOutcome": "acceptable",
+                            "assessmentOutcomeDate": "2026-10-02",
+                            "decision": "authorized",
+                            "decisionDate": "2026-10-07",
+                            "reportingStatusCode": "Authorised",
+                            "countryName": "Hungary",
+                            "trialStatus": "Authorised",
+                            "firstDecisionDate": "2026-10-07"
+                        },
+                        "applicationStatusCode": "Authorised"
+                    }
+                ],
+                "decisionDate": "2026-10-07",
+                "ctMSCsByApplication": [
+                    {
+                        "id": 60908,
+                        "mscName": "Hungary",
+                        "reportingStatusCode": "Authorised"
+                    }
+                ],
+                "businessKey": "IN",
+                "allPartTwosOutOfScope": false,
+                "applicationTrialDecisionByMsc": {},
+                "decisions": [
+                    {
+                        "id": 145511,
+                        "applicationId": 85315,
+                        "mscId": 60908,
+                        "mscName": "Hungary",
+                        "decisionDate": "2026-10-07T15:43:07.693",
+                        "decision": "authorized",
+                        "assessmentOutcome": "acceptable",
+                        "eventType": "decision",
+                        "part2Id": 341960,
+                        "part1Id": 145332,
+                        "applicationType": "INITIAL",
+                        "isRMS": true
+                    }
+                ],
+                "productRoleGroupDocument": [
+                    {
+                        "documentUuid": "5cac2f2d-e0b0-4c70-af39-9f53f1d24968",
+                        "productRoleGroupId": 449921
+                    },
+                    {
+                        "documentUuid": "101b6149-01df-42a3-847e-f0833b059d30",
+                        "productRoleGroupId": 449920
+                    },
+                    {
+                        "documentUuid": "bfb34f04-c2fc-4342-94f6-4ff3c345c70e",
+                        "productRoleGroupId": 449915
+                    },
+                    {
+                        "documentUuid": "7e0b2bc7-85f5-41eb-9273-f5f71bb909cc",
+                        "productRoleGroupId": 449919
+                    },
+                    {
+                        "documentUuid": "416fb779-25a3-4144-988c-f6192c8bd5d9",
+                        "productRoleGroupId": 449914
+                    },
+                    {
+                        "documentUuid": "cbf66728-5ce1-4866-9377-5df8ecd088c1",
+                        "productRoleGroupId": 449922
+                    },
+                    {
+                        "documentUuid": "54378c80-514b-4384-b6fb-16aaae42d7fb",
+                        "productRoleGroupId": 449916
+                    },
+                    {
+                        "documentUuid": "137fd114-f8f9-4187-83c3-b202d5d73bd0",
+                        "productRoleGroupId": 449917
+                    },
+                    {
+                        "documentUuid": "8fb59fc2-a225-4202-8ff5-6db4a437a43d",
+                        "productRoleGroupId": 449917
+                    },
+                    {
+                        "documentUuid": "123b6063-ddf4-43d0-84e3-68e5aa36a3e2",
+                        "productRoleGroupId": 449918
+                    },
+                    {
+                        "documentUuid": "d4916e6f-4df2-40f3-aad1-88ba2cef2da6",
+                        "productRoleGroupId": 449918
+                    }
+                ]
+            }
+        ],
+        "trialGlobalEnd": [],
+        "memberStatesConcerned": [
+            {
+                "mscName": "Hungary",
+                "mscId": 60908,
+                "firstDecisionDate": "2026-10-07T15:43:07.693",
+                "lastDecisionDate": "2026-10-07T15:43:07.693",
+                "mscPublicStatusCode": 2
+            }
+        ],
+        "eudraCt": {
+            "isTransitioned": false
+        }
+    },
+    "events": {
+        "temporaryHaltList": [],
+        "trialEvents": [
+            {
+                "mscId": 60908,
+                "mscName": "Hungary",
+                "events": []
+            }
+        ],
+        "unexpectedEvents": [],
+        "seriousBreaches": [],
+        "urgentSafetyMeasures": []
+    },
+    "results": {},
+    "documents": [
+        {
+            "title": "Protocol_for_publication",
+            "uuid": "481a97e8-b045-4562-bc64-be8f00c4b749",
+            "documentType": "104",
+            "documentTypeLabel": "Protocol (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Protocol_for_publication_v2",
+            "uuid": "1b258c08-3786-4a66-8696-cbff5514c13a",
+            "documentType": "104",
+            "documentTypeLabel": "Protocol (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "2",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Subject_Questionnaire_Clinical_v1_HUN",
+            "uuid": "420de941-5d06-4e80-92d4-4f1828196720",
+            "documentType": "104",
+            "documentTypeLabel": "Protocol (for publication)",
+            "languageCode": 13,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Validated_Lifestyle_Questionnaire_ELEF_v1_HUN",
+            "uuid": "64b4a898-429a-458a-9f44-58ba490dd3bb",
+            "documentType": "104",
+            "documentTypeLabel": "Protocol (for publication)",
+            "languageCode": 13,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Synopsis_of_the_Protocol_for_publication",
+            "uuid": "7a59f3db-8af5-40b4-9774-16ee6bcb6671",
+            "documentType": "7",
+            "documentTypeLabel": "Synopsis of the protocol (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Protokoll_osszefoglalo_magyar",
+            "uuid": "f8957e0d-12a0-462a-b9b2-e518b2133960",
+            "documentType": "7",
+            "documentTypeLabel": "Synopsis of the protocol (for publication)",
+            "languageCode": 13,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Synopsis_of_the_Protocol_for_publication_V2",
+            "uuid": "a366367e-182c-452b-af0b-43bc180c7724",
+            "documentType": "7",
+            "documentTypeLabel": "Synopsis of the protocol (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "2",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Protokoll_osszefoglalo_magyar_V2",
+            "uuid": "e570f231-0dba-4f5d-8742-2c5a1b9a0380",
+            "documentType": "7",
+            "documentTypeLabel": "Synopsis of the protocol (for publication)",
+            "languageCode": 13,
+            "fileType": "PDF",
+            "associatedEntityId": 145332,
+            "manualVersion": "2",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_DRSP_Slinda",
+            "uuid": "5cac2f2d-e0b0-4c70-af39-9f53f1d24968",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449921,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Tri-Regol_Authorised",
+            "uuid": "101b6149-01df-42a3-847e-f0833b059d30",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449920,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_LNG_IUS_13.5mg_Jaydess",
+            "uuid": "bfb34f04-c2fc-4342-94f6-4ff3c345c70e",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449915,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_Nomegestrol_Estradiol_Zoely",
+            "uuid": "7e0b2bc7-85f5-41eb-9273-f5f71bb909cc",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449919,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_Estetrol_Drospirenone_Drovelis",
+            "uuid": "416fb779-25a3-4144-988c-f6192c8bd5d9",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449914,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_EE_LNG_20ug_MISSEE",
+            "uuid": "cbf66728-5ce1-4866-9377-5df8ecd088c1",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449922,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_DSG_Azalia",
+            "uuid": "54378c80-514b-4384-b6fb-16aaae42d7fb",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449916,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_LNG_IUS_52mg_Mirena",
+            "uuid": "137fd114-f8f9-4187-83c3-b202d5d73bd0",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449917,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_LNG_IUS_52mg_Levosert",
+            "uuid": "8fb59fc2-a225-4202-8ff5-6db4a437a43d",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449917,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_EE_LNG_30ug_Rigevidon",
+            "uuid": "123b6063-ddf4-43d0-84e3-68e5aa36a3e2",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449918,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "SmPC_Representative_EE_LNG_30ug_Seasonique",
+            "uuid": "d4916e6f-4df2-40f3-aad1-88ba2cef2da6",
+            "documentType": "19",
+            "documentTypeLabel": "Summary of Product Characteristics (SmPC) (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 449918,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Recruitment Arrangements",
+            "uuid": "3f65dee2-4885-4903-b80e-1bd7fa80dcd3",
+            "documentType": "14",
+            "documentTypeLabel": "Recruitment arrangements (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 341960,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Subject information and informed consent form",
+            "uuid": "0d711b4d-492b-402d-a962-feadf1ef724a",
+            "documentType": "15",
+            "documentTypeLabel": "Subject information and informed consent form (for publication)",
+            "languageCode": 6,
+            "fileType": "PDF",
+            "associatedEntityId": 341960,
+            "manualVersion": "1",
+            "systemVersion": "1"
+        },
+        {
+            "title": "Subject information and informed consent form_v2",
+            "uuid": "c495802a-c64e-496a-a76b-a917361ca0e3",
+            "documentType": "15",
+            "documentTypeLabel": "Subject information and informed consent form (for publication)",
+            "languageCode": 13,
+            "fileType": "PDF",
+            "associatedEntityId": 341960,
+            "manualVersion": "2",
+            "systemVersion": "1"
+        }
+    ],
+    "trialRegion": "EEA",
+    "trialRegionCode": 1,
+    "correctiveMeasures": []
+}

@@ -1,0 +1,890 @@
+"""Main entry point and orchestrator for EU CTIS Data Pipeline."""
+
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+from datetime import datetime, timedelta, timezone
+import logging
+import sys
+import uuid
+from typing import Any, Dict, List, Optional
+
+from ctis_etl import config, database, parser, storage
+from ctis_etl.api_client import CTISClient, CTISNotFoundError
+
+from logging.handlers import RotatingFileHandler
+import re
+import signal
+import threading
+
+# Global shutdown event for graceful container termination
+_shutdown_event = threading.Event()
+
+
+def _handle_shutdown_signal(signum: int, frame: Any) -> None:
+    sig_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+    logger.warning(f"Shutdown signal {sig_name} received. Finishing active tasks and stopping gracefully...")
+    _shutdown_event.set()
+
+
+try:
+    signal.signal(signal.SIGINT, _handle_shutdown_signal)
+    signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+except (ValueError, AttributeError):
+    pass
+
+# Configure rotating file logging for production disk safety
+_log_handlers: List[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+for _log_name in ("ctis_etl.log", "etl.log"):
+    _log_handlers.append(
+        RotatingFileHandler(
+            config.LOGS_DIR / _log_name,
+            maxBytes=config.LOG_FILE_MAX_BYTES,
+            backupCount=config.LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
+    )
+
+logging.basicConfig(
+    level=getattr(logging, config.LOG_LEVEL, logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=_log_handlers,
+)
+logger = logging.getLogger("ctis_etl")
+
+
+def parse_ctis_date(date_str: Optional[str]) -> Optional[datetime]:
+    """Parses date string from Search API (e.g. '07/10/2026', 'HU: 07/10/2026', or ISO format)."""
+    if not date_str or not isinstance(date_str, str):
+        return None
+    date_str = date_str.strip()
+    # Strip country code prefixes like 'HU: ', 'FR: ', 'DE: '
+    date_str = re.sub(r"^[A-Za-z]{2,3}:\s*", "", date_str)
+
+    # Try DD/MM/YYYY and ISO formats
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
+        try:
+            return datetime.strptime(date_str.split(".")[0] if "." in date_str and fmt == "%Y-%m-%dT%H:%M:%S" else date_str, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def process_single_trial(
+    client: CTISClient,
+    ct_number: str,
+    storage_backend: Optional[str] = None,
+    download_docs: bool = config.DOWNLOAD_DOCUMENTS,
+) -> bool:
+    """Retrieves, validates, parses, stores a single trial and updates state DB."""
+    if _shutdown_event.is_set():
+        logger.info(f"Skipping {ct_number} due to active shutdown signal.")
+        return False
+
+    database.mark_processing(ct_number)
+    logger.info(f"Processing trial: {ct_number}")
+    raw_payload = None
+    try:
+        raw_payload = client.retrieve_trial(ct_number)
+
+        # Validate core invariants
+        if not raw_payload.get("ctNumber"):
+            raise ValueError(f"Payload missing valid ctNumber: {ct_number}")
+
+        # Parse into 6 discrete domain files (Silver Layer)
+        silver_files = parser.parse_trial_dossier(raw_payload)
+
+        # Download attached regulatory PDF documents if enabled
+        if download_docs and "trial_documents.json" in silver_files:
+            silver_files["trial_documents.json"] = storage.sync_trial_documents(
+                client=client,
+                ct_number=ct_number,
+                documents=silver_files["trial_documents.json"],
+                backend=storage_backend,
+            )
+
+        # Persist Bronze (raw.json) and Silver (6 domain files)
+        save_results = storage.save_trial_files(
+            ct_number=ct_number,
+            parsed_files=silver_files,
+            raw_payload=raw_payload,
+            backend=storage_backend,
+        )
+
+        failed_files = [f for f, ok in save_results.items() if not ok]
+        if failed_files or not save_results:
+            raise IOError(f"Failed to persist files for trial {ct_number}: {failed_files}")
+
+        # Mark success in database
+        publish_date = raw_payload.get("publishDate") or raw_payload.get("decisionDate")
+        database.mark_success(ct_number, publish_date)
+        logger.info(f"Successfully processed trial: {ct_number}")
+        return True
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error processing trial {ct_number}: {error_msg}")
+        storage.quarantine_payload(ct_number, raw_payload or {"error": error_msg}, error_msg)
+        database.mark_failure(ct_number, error_msg)
+        return False
+
+
+def run_incremental(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Discovers recently updated trials within lookback window and synchronizes them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.record_pipeline_run(run_id, "INCREMENTAL", started_at, status="RUNNING")
+
+def discover_and_stage_recent(
+    client: CTISClient,
+    lookback_days: int = 7,
+) -> int:
+    """Discovers recent trials within lookback window and stages them in database.
+
+    Returns total count of discovered trials.
+    """
+    cutoff_date = datetime.now() - timedelta(days=lookback_days)
+    logger.info(f"Scanning Search API for trials within last {lookback_days} days (cutoff: {cutoff_date.strftime('%Y-%m-%d')})...")
+
+    discovered = 0
+    current_page = 1
+    hit_cutoff = False
+
+    while not hit_cutoff:
+        search_resp = client.search_page(page=current_page, size=100, sort_property="decisionDate", sort_direction="DESC")
+        items = search_resp.get("data", [])
+        if not items:
+            break
+
+        for item in items:
+            discovered += 1
+            ct_number = item.get("ctNumber")
+            if not ct_number:
+                continue
+
+            raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
+            dt = parse_ctis_date(raw_date)
+
+            if dt and dt < cutoff_date:
+                hit_cutoff = True
+                break
+
+            database.stage_trial(ct_number, raw_date)
+
+        pagination = search_resp.get("pagination", {})
+        if current_page >= pagination.get("totalPages", current_page):
+            break
+        current_page += 1
+
+    return discovered
+
+
+def _process_trial_queue(
+    client: CTISClient,
+    queue: List[str],
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> tuple[int, int]:
+    """Helper to process a list of trials with ThreadPoolExecutor. Returns (succeeded, failed)."""
+    succeeded = 0
+    failed = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
+            for ct_num in queue
+        }
+        for future in concurrent.futures.as_completed(future_map):
+            ct_num = future_map[future]
+            try:
+                if future.result():
+                    succeeded += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                logger.error(f"Task failure for {ct_num}: {e}")
+    return succeeded, failed
+
+
+def _publish_report() -> Dict[str, Any]:
+    """Generates and uploads the public status report JSON and HTML dashboard to S3 and local disk."""
+    try:
+        report_urls = storage.publish_pipeline_status_report()
+        json_url = report_urls.get("json_browser_url")
+        html_url = report_urls.get("html_browser_url")
+        if json_url:
+            logger.info(f"Pipeline JSON Status URL: {json_url}")
+        if html_url:
+            logger.info(f"Pipeline Dashboard URL:   {html_url}")
+        return report_urls
+    except Exception as e:
+        logger.error(f"Failed publishing pipeline status report: {e}")
+        return {}
+
+
+def run_new_trials(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Process 2: Checks CTIS for brand new trials published recently and ingests them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "NEW_TRIALS", started_at, status="RUNNING")
+
+    logger.info(">>> [PROCESS 2] Checking for brand NEW clinical trials...")
+    discovered = 0
+    new_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        new_queue = database.get_pending_trials(filter_type="new")
+        logger.info(f"Discovered {len(new_queue)} brand NEW trials ready for ingestion.")
+
+        succeeded, failed = _process_trial_queue(client, new_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="NEW_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(new_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[PROCESS 2 {run_status}] New trials processed: {len(new_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="NEW_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(new_queue),
+        )
+        logger.error(f"Process 2 failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_updated_trials(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Process 3: Checks CTIS for updates or amendments to existing trials and updates them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "UPDATED_TRIALS", started_at, status="RUNNING")
+
+    logger.info(">>> [PROCESS 3] Checking for UPDATES / AMENDMENTS to existing trials...")
+    discovered = 0
+    updates_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        updates_list = database.get_pending_trials(filter_type="updates")
+        new_list = database.get_pending_trials(filter_type="new")
+        # Ingest both updated trials (old copies archived first) and newly discovered trials
+        updates_queue = updates_list + [ct for ct in new_list if ct not in updates_list]
+        logger.info(
+            f"Discovered {len(updates_queue)} trials ready for sync "
+            f"({len(updates_list)} updates to re-archive, {len(new_list)} new trials)."
+        )
+
+        succeeded, failed = _process_trial_queue(client, updates_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="UPDATED_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(updates_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[PROCESS 3 {run_status}] Updated trials processed: {len(updates_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="UPDATED_TRIALS",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(updates_queue),
+        )
+        logger.error(f"Process 3 failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_incremental(
+    client: CTISClient,
+    lookback_days: int = 7,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Discovers both new and updated trials within lookback window and synchronizes them."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "INCREMENTAL", started_at, status="RUNNING")
+
+    logger.info(f"Starting combined incremental sync (new + updates) with {lookback_days}-day lookback...")
+    discovered = 0
+    pending_queue: List[str] = []
+    try:
+        discovered = discover_and_stage_recent(client, lookback_days)
+        pending_queue = database.get_pending_trials()
+        logger.info(f"Queue size for ingestion (new + updates): {len(pending_queue)} trials")
+
+        succeeded, failed = _process_trial_queue(client, pending_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="INCREMENTAL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=discovered,
+            processed=len(pending_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"Incremental sync finished ({run_status}). Processed: {len(pending_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="INCREMENTAL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=discovered,
+            processed=len(pending_queue),
+        )
+        logger.error(f"Incremental sync failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_retry_failed(
+    client: CTISClient,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Retries previously quarantined or failed trials stored in the database."""
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "RETRY_FAILED", started_at, status="RUNNING")
+
+    failed_queue: List[str] = []
+    try:
+        with database.sqlite3.connect(database.get_sqlite_path()) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT ct_number FROM trials WHERE status = 'FAILED'")
+            failed_queue = [r[0] for r in cursor.fetchall()]
+            if failed_queue:
+                cursor.execute(
+                    """
+                    UPDATE trials
+                    SET status = CASE WHEN last_fetched_at IS NOT NULL THEN 'UPDATE_PENDING' ELSE 'PENDING' END,
+                        retry_count = 0
+                    WHERE status = 'FAILED'
+                    """
+                )
+                conn.commit()
+
+        if not failed_queue:
+            logger.info("No failed trials found to retry.")
+            completed_at = datetime.now(timezone.utc).isoformat()
+            database.record_pipeline_run(
+                run_id=run_id,
+                run_type="RETRY_FAILED",
+                started_at=started_at,
+                completed_at=completed_at,
+                status="COMPLETED",
+                discovered=0,
+                processed=0,
+                succeeded=0,
+                failed=0,
+            )
+            return
+
+        logger.info(f"Re-queued {len(failed_queue)} previously failed trials. Processing...")
+        succeeded, failed = _process_trial_queue(client, failed_queue, max_workers, storage_backend)
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="RETRY_FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=len(failed_queue),
+            processed=len(failed_queue),
+            succeeded=succeeded,
+            failed=failed,
+        )
+        logger.info(f"[RETRY_FAILED {run_status}] Processed: {len(failed_queue)}, Succeeded: {succeeded}, Failed: {failed}")
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="RETRY_FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=len(failed_queue),
+            processed=len(failed_queue),
+        )
+        logger.error(f"Retry failed execution error: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_full(
+    client: CTISClient,
+    max_workers: int = 5,
+    storage_backend: Optional[str] = None,
+) -> None:
+    """Discovers all trials and processes the full catalog with bi-directional pagination.
+
+    Note: The EU CTIS Public Search API has a 10,000 record pagination cap (Elasticsearch max_result_window).
+    When total catalog records exceed 10,000, this function runs bi-directional passes:
+      - Pass 1 (DESC): Discovers recent trials (from today back to ~March 2024, up to 10,000 trials).
+      - Pass 2 (ASC): Discovers historical trials (from 2022 forward to ~August 2025, up to 10,000 trials).
+    The overlapping passes seamlessly cover 100% of all trials across the entire EU registry.
+    """
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    database.set_active_run_id(run_id)
+    database.record_pipeline_run(run_id, "FULL", started_at, status="RUNNING")
+
+    logger.info("Starting FULL historical catalog ingestion with bi-directional pagination support...")
+    seen_ct_numbers: set[str] = set()
+    prior_pass_trials: set[str] = set()
+    total_processed = 0
+    total_succeeded = 0
+    total_failed = 0
+    total_skipped = 0
+
+    page_size = 100
+    passes = ["DESC"]
+    catalog_total_records = 0
+
+    try:
+        pass_idx = 0
+        while pass_idx < len(passes):
+            sort_direction = passes[pass_idx]
+            pass_idx += 1
+
+            if _shutdown_event.is_set():
+                break
+
+            pass_label = "Newest to Oldest" if sort_direction == "DESC" else "Oldest to Newest"
+            logger.info(
+                f"=== [Catalog Ingestion Pass {pass_idx}/{len(passes)}] Direction: {sort_direction} ({pass_label}) ==="
+            )
+
+            current_page = 1
+            while True:
+                if _shutdown_event.is_set():
+                    break
+
+                logger.info(
+                    f"[Pass {pass_idx} ({sort_direction})] Fetching Search API page {current_page} (size={page_size})..."
+                )
+                try:
+                    resp = client.search_page(
+                        page=current_page,
+                        size=page_size,
+                        sort_property="decisionDate",
+                        sort_direction=sort_direction,
+                    )
+                except Exception as e:
+                    logger.error(f"Error fetching search page {current_page} ({sort_direction}): {e}. Retrying in 5s...")
+                    import time
+                    time.sleep(5)
+                    continue
+
+                items = resp.get("data", [])
+                pagination = resp.get("pagination", {})
+                total_pages = pagination.get("totalPages", current_page)
+                if not catalog_total_records:
+                    catalog_total_records = pagination.get("totalRecords", 0)
+
+                # If registry catalog exceeds 10,000 records, enable the reverse ASC pass
+                if catalog_total_records > 10000 and "ASC" not in passes:
+                    passes.append("ASC")
+                    logger.info(
+                        f"EU CTIS catalog size is {catalog_total_records} (>10,000 CTIS API window limit). "
+                        f"Bi-directional scan activated: will execute Pass 2 (ASC) to guarantee 100% catalog coverage."
+                    )
+
+                # CTIS API hard limit: offsets beyond 10,000 return empty data
+                if not items:
+                    logger.info(
+                        f"[Pass {pass_idx} ({sort_direction})] Reached end of available results at page {current_page}."
+                    )
+                    break
+
+                # Stage items for this page
+                page_pending = []
+                for item in items:
+                    ct_number = item.get("ctNumber")
+                    if not ct_number:
+                        continue
+
+                    # If this trial was already encountered and processed in a prior pass of this run, skip it
+                    if ct_number in prior_pass_trials:
+                        total_skipped += 1
+                        continue
+
+                    seen_ct_numbers.add(ct_number)
+
+                    raw_date = item.get("lastPublicationUpdate") or item.get("decisionDateOverall") or item.get("lastUpdated")
+                    state = database.stage_trial(ct_number, raw_date)
+                    if state in ("PENDING", "UPDATE_PENDING"):
+                        page_pending.append(ct_number)
+                    else:
+                        total_skipped += 1
+
+                # Process pending trials for this batch
+                if page_pending:
+                    logger.info(
+                        f"[Pass {pass_idx} Page {current_page}/{total_pages} ({sort_direction})] "
+                        f"Ingesting {len(page_pending)} trials "
+                        f"({len(items) - len(page_pending)} already up to date)..."
+                    )
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_map = {
+                            executor.submit(process_single_trial, client, ct_num, storage_backend): ct_num
+                            for ct_num in page_pending
+                        }
+                        for future in concurrent.futures.as_completed(future_map):
+                            ct_num = future_map[future]
+                            total_processed += 1
+                            try:
+                                if future.result():
+                                    total_succeeded += 1
+                                else:
+                                    total_failed += 1
+                            except Exception as e:
+                                total_failed += 1
+                                logger.error(f"Failure processing {ct_num}: {e}")
+                else:
+                    logger.info(
+                        f"[Pass {pass_idx} Page {current_page}/{total_pages} ({sort_direction})] "
+                        f"All {len(items)} trials already up to date. Skipping batch."
+                    )
+
+                logger.info(
+                    f"Progress: [{sort_direction}] Page {current_page}/{total_pages} | "
+                    f"Unique Discovered: {len(seen_ct_numbers)}/{catalog_total_records or len(seen_ct_numbers)} | "
+                    f"Succeeded: {total_succeeded} | Skipped: {total_skipped} | Failed: {total_failed}"
+                )
+
+                # Cap each pass at page 100 because CTIS API Elasticsearch window is 10,000 (100 * 100)
+                if current_page >= total_pages or current_page >= 100 or _shutdown_event.is_set():
+                    break
+
+                current_page += 1
+                if current_page % 5 == 0:
+                    database.record_pipeline_run(
+                        run_id=run_id,
+                        run_type="FULL",
+                        started_at=started_at,
+                        completed_at=None,
+                        status="RUNNING",
+                        discovered=len(seen_ct_numbers),
+                        processed=total_processed,
+                        succeeded=total_succeeded,
+                        failed=total_failed,
+                    )
+                    _publish_report()
+
+            # Record trials processed in this pass so subsequent passes skip them immediately
+            prior_pass_trials.update(seen_ct_numbers)
+
+        run_status = "INTERRUPTED" if _shutdown_event.is_set() else "COMPLETED"
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="FULL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status=run_status,
+            discovered=len(seen_ct_numbers),
+            processed=total_processed,
+            succeeded=total_succeeded,
+            failed=total_failed,
+        )
+        logger.info(
+            f"FULL catalog ingestion finished ({run_status})! Total Unique Discovered: {len(seen_ct_numbers)}, "
+            f"Processed: {total_processed}, Succeeded: {total_succeeded}, "
+            f"Skipped: {total_skipped}, Failed: {total_failed}"
+        )
+    except Exception as e:
+        completed_at = datetime.now(timezone.utc).isoformat()
+        database.record_pipeline_run(
+            run_id=run_id,
+            run_type="FULL",
+            started_at=started_at,
+            completed_at=completed_at,
+            status="FAILED",
+            discovered=len(seen_ct_numbers),
+            processed=total_processed,
+            succeeded=total_succeeded,
+            failed=total_failed,
+        )
+        logger.error(f"FULL catalog ingestion failed: {e}")
+        raise
+    finally:
+        database.set_active_run_id(None)
+        _publish_report()
+
+
+def run_check(client: CTISClient) -> None:
+    """Pre-flight diagnostic check verifying CTIS API, local disk, SQLite, S3, and DynamoDB."""
+    print("=================================================================")
+    print("       EU CTIS Data Pipeline - System Diagnostic Check          ")
+    print("=================================================================")
+    all_ok = True
+
+    # 1. CTIS API Connectivity
+    print("\n[1/5] Checking CTIS Public API connectivity...")
+    try:
+        resp = client.search_page(page=1, size=2)
+        total = resp.get("pagination", {}).get("totalRecords", 0)
+        items = resp.get("data", [])
+        if total > 0 and len(items) > 0:
+            print(f"  [PASS] CTIS Search API reachable. Total records in database: {total}")
+            sample_ct = items[0].get("ctNumber")
+            print(f"  [PASS] Sample trial retrieve testing on '{sample_ct}'...")
+            trial_data = client.retrieve_trial(sample_ct)
+            if trial_data.get("ctNumber") == sample_ct:
+                print(f"  [PASS] CTIS Retrieve API verified successfully.")
+        else:
+            print(f"  [FAIL] CTIS Search API returned 0 records.")
+            all_ok = False
+    except Exception as e:
+        print(f"  [FAIL] CTIS API communication error: {e}")
+        all_ok = False
+
+    # 2. Local Filesystem Write Access
+    print("\n[2/5] Checking Local Storage & Directory Permissions...")
+    try:
+        test_file = config.DATA_DIR / ".write_test"
+        test_file.write_text("ok", encoding="utf-8")
+        test_file.unlink()
+        print(f"  [PASS] Local data directory ({config.DATA_DIR}) writable.")
+        print(f"  [PASS] Quarantine directory ({config.QUARANTINE_DIR}) writable.")
+        print(f"  [PASS] Logs directory ({config.LOGS_DIR}) writable.")
+    except Exception as e:
+        print(f"  [FAIL] Local filesystem write error: {e}")
+        all_ok = False
+
+    # 3. SQLite Database State Check
+    print("\n[3/5] Checking SQLite Database ('tracker.db')...")
+    try:
+        database.init_sqlite_db()
+        with database.sqlite3.connect(config.SQLITE_DB_PATH) as conn:
+            cnt = conn.execute("SELECT count(*) FROM trials").fetchone()[0]
+            print(f"  [PASS] SQLite database accessible. Current tracked trials: {cnt}")
+    except Exception as e:
+        print(f"  [FAIL] SQLite database error: {e}")
+        all_ok = False
+
+    # 4. Amazon S3 Check
+    print(f"\n[4/5] Checking Amazon S3 Bucket ('{config.S3_BUCKET_NAME}')...")
+    s3 = storage.get_s3_client()
+    if s3 is None:
+        print("  [WARN] boto3 is not installed or S3 client could not initialize. S3 uploads disabled.")
+    else:
+        try:
+            s3.head_bucket(Bucket=config.S3_BUCKET_NAME)
+            print(f"  [PASS] Successfully connected to S3 bucket '{config.S3_BUCKET_NAME}' in region '{config.AWS_REGION}'.")
+        except Exception as e:
+            print(f"  [FAIL] S3 Bucket access error: {e}")
+            all_ok = False
+
+    # 5. Amazon DynamoDB Check
+    print(f"\n[5/5] Checking Amazon DynamoDB Table ('{config.DYNAMODB_TABLE_NAME}')...")
+    table = database.get_dynamodb_table()
+    if table is None:
+        print("  [WARN] boto3 is not installed or DynamoDB client could not initialize. DynamoDB disabled.")
+    else:
+        try:
+            table.load()
+            print(f"  [PASS] Successfully connected to DynamoDB table '{config.DYNAMODB_TABLE_NAME}' (status: {table.table_status}).")
+        except Exception as e:
+            print(f"  [FAIL] DynamoDB Table access error: {e}")
+            all_ok = False
+
+    print("\n=================================================================")
+    if all_ok:
+        print("  DIAGNOSTIC STATUS: ALL CRITICAL SYSTEMS OPERATIONAL [OK]")
+    else:
+        print("  DIAGNOSTIC STATUS: ISSUES DETECTED - PLEASE REVIEW LOGS ABOVE")
+    print("=================================================================\n")
+
+
+def main() -> None:
+    """Command-line argument parser and dispatcher."""
+    parser_cli = argparse.ArgumentParser(description="EU CTIS Data Pipeline ETL CLI")
+    parser_cli.add_argument(
+        "--mode",
+        choices=["incremental", "historical", "full", "new", "updates", "single", "retry-failed", "check", "status", "report"],
+        default="incremental",
+        help="Pipeline execution mode: 'historical' (all data), 'new' (only new trials), 'updates' (only updated trials), 'incremental' (new + updates), 'single' (one trial), 'retry-failed', 'check' (pre-flight diagnostics), 'status' (print live summary & browser links)",
+    )
+    parser_cli.add_argument(
+        "--lookback-days",
+        type=int,
+        default=config.LOOKBACK_DAYS,
+        help="Lookback window in days for new/updates/incremental sync (default: 7)",
+    )
+    parser_cli.add_argument(
+        "--ct-number",
+        type=str,
+        help="Trial identifier required for '--mode single' (e.g. 2026-527084-15-00)",
+    )
+    parser_cli.add_argument(
+        "--workers",
+        type=int,
+        default=config.MAX_WORKERS,
+        help="Concurrent worker threads (default: 5)",
+    )
+    parser_cli.add_argument(
+        "--storage",
+        choices=["local", "s3", "both"],
+        default=config.STORAGE_BACKEND,
+        help="Storage target backend (default: from .env)",
+    )
+    parser_cli.add_argument(
+        "--download-docs",
+        dest="download_docs",
+        action="store_true",
+        default=config.DOWNLOAD_DOCUMENTS,
+        help="Download PDF files for trial documents to storage (default: True)",
+    )
+    parser_cli.add_argument(
+        "--no-download-docs",
+        dest="download_docs",
+        action="store_false",
+        help="Disable downloading PDF files for trial documents",
+    )
+
+    args = parser_cli.parse_args()
+    config.DOWNLOAD_DOCUMENTS = args.download_docs
+    client = CTISClient(base_url=config.CTIS_API_BASE_URL)
+    database.init_sqlite_db()
+    database.restore_state_from_dynamodb_if_empty()
+    stale_count = database.reset_stale_processing(timeout_minutes=15)
+    stale_runs = database.reset_stale_pipeline_runs(timeout_hours=4)
+    if stale_count > 0:
+        logger.info(f"Automatically recovered {stale_count} stale trials left from interrupted runs.")
+    if stale_runs > 0:
+        logger.info(f"Automatically closed {stale_runs} orphaned RUNNING pipeline run(s) as INTERRUPTED.")
+
+    if args.mode in ("status", "report"):
+        report = database.generate_pipeline_summary_report()
+        report_urls = storage.publish_pipeline_status_report(report)
+        print("\n=================================================================")
+        print("          EU CTIS Data Pipeline - Current Status Report          ")
+        print("=================================================================")
+        print(f"Total Trials Tracked: {report['overall_metrics']['total_trials_tracked']}")
+        print(f"Succeeded:            {report['overall_metrics']['succeeded']}")
+        print(f"Pending:              {report['overall_metrics']['pending']}")
+        print(f"Failed:               {report['overall_metrics']['failed']}")
+        print("-----------------------------------------------------------------")
+        if "json_browser_url" in report_urls:
+            print(f"Public JSON URL (Browser / App):\n{report_urls['json_browser_url']}\n")
+        if "html_browser_url" in report_urls:
+            print(f"Public HTML Dashboard (Browser):\n{report_urls['html_browser_url']}\n")
+        print(f"Local JSON File: {report_urls.get('local_json_path')}")
+        print("=================================================================\n")
+        sys.exit(0)
+
+    if args.mode == "check":
+        run_check(client)
+        sys.exit(0)
+
+    if args.mode == "single":
+        if not args.ct_number:
+            logger.error("--ct-number is required when using --mode single")
+            sys.exit(1)
+        ok = process_single_trial(client, args.ct_number, storage_backend=args.storage)
+        _publish_report()
+        sys.exit(0 if ok else 1)
+
+    elif args.mode in ("historical", "full"):
+        run_full(
+            client=client,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "new":
+        run_new_trials(
+            client=client,
+            lookback_days=args.lookback_days,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "updates":
+        run_updated_trials(
+            client=client,
+            lookback_days=args.lookback_days,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "incremental":
+        run_incremental(
+            client=client,
+            lookback_days=args.lookback_days,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+    elif args.mode == "retry-failed":
+        run_retry_failed(
+            client=client,
+            max_workers=args.workers,
+            storage_backend=args.storage,
+        )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,8 @@
+# Process 2: Check for brand NEW clinical trials every 6 hours
+0 */6 * * * root /bin/bash -c ". /app/env.sh && python -m ctis_etl.main --mode new >> /app/logs/cron.log 2>&1"
+
+# Process 3: Check for UPDATES to existing trials daily at 02:00 AM UTC
+0 2 * * * root /bin/bash -c ". /app/env.sh && python -m ctis_etl.main --mode updates >> /app/logs/cron.log 2>&1"
+
+# Empty line required by cron
+
