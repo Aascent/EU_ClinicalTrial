@@ -1529,19 +1529,22 @@ def generate_dashboard_html(report: Dict[str, Any], json_url: Optional[str] = No
 def publish_pipeline_status_report(
     report_data: Optional[Dict[str, Any]] = None,
     generate_html: bool = True,
-    expires_in_seconds: int = 604800,
+    expires_in_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Generates, saves locally, uploads to AWS S3, and returns browser pre-signed URLs for pipeline status report.
 
     Args:
         report_data: Optional pre-generated report dict. If None, pulled from database.
         generate_html: Whether to also generate and upload an interactive HTML dashboard.
-        expires_in_seconds: Expiration for browser pre-signed URL (default 7 days).
+        expires_in_seconds: Expiration for browser pre-signed URL (defaults to config.DASHBOARD_EXPIRES_SECONDS).
 
     Returns:
         Dictionary containing local paths, S3 keys, and browser pre-signed URLs.
     """
     from ctis_etl import database
+
+    if expires_in_seconds is None:
+        expires_in_seconds = getattr(config, "DASHBOARD_EXPIRES_SECONDS", 365 * 86400)
 
     if report_data is None:
         report_data = database.generate_pipeline_summary_report()

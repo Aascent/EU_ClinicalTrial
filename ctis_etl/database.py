@@ -101,11 +101,11 @@ def init_sqlite_db() -> None:
 _active_run_id: Optional[str] = None
 
 
-def restore_state_from_dynamodb_if_empty() -> int:
-    """Pre-populates SQLite state from DynamoDB if SQLite DB is freshly created or empty.
+def restore_state_from_dynamodb_if_empty(force: bool = False) -> int:
+    """Pre-populates or synchronizes SQLite state from DynamoDB if SQLite DB is empty or missing records.
 
     Prevents re-fetching trials that have already been persisted to DynamoDB and S3 when
-    containers are destroyed or caches cleared.
+    containers are destroyed, caches cleared, or local state is out of sync.
     """
     if config.STATE_BACKEND not in ("dynamodb", "both"):
         return 0
@@ -120,10 +120,12 @@ def restore_state_from_dynamodb_if_empty() -> int:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM trials")
             count = cursor.fetchone()[0]
-            if count > 0:
-                return 0  # Already has local state
 
-        logger.info("Local SQLite tracking database is empty. Restoring state from DynamoDB...")
+            dynamo_count = getattr(table, "item_count", 0) or 0
+            if not force and count > 0 and (dynamo_count == 0 or count >= dynamo_count):
+                return 0
+
+        logger.info(f"Synchronizing state from DynamoDB (local count: {count}, DynamoDB estimate: {dynamo_count})...")
         scanned_items = []
         resp = table.scan(
             ProjectionExpression="ct_number, #st, retry_count, last_publish_date, last_fetched_at, updated_at",

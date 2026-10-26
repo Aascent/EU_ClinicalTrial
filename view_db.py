@@ -16,6 +16,13 @@ def _resolve_db_path() -> Path:
 DB_PATH = _resolve_db_path()
 
 def main():
+    try:
+        from ctis_etl import database
+        database.init_sqlite_db()
+        database.restore_state_from_dynamodb_if_empty()
+    except Exception:
+        pass
+
     if not DB_PATH.exists() or DB_PATH.is_dir():
         print(f"Database file '{DB_PATH}' does not exist yet.")
         return
@@ -29,14 +36,23 @@ def main():
     print("=" * 110)
 
     # 1. Trials Status
+    cursor.execute("SELECT COUNT(*) FROM trials")
+    total_trials_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT status, COUNT(*) FROM trials GROUP BY status ORDER BY count(*) DESC")
+    status_summary = ", ".join([f"{r[0]}: {r[1]}" for r in cursor.fetchall()])
+
     cursor.execute("""
         SELECT ct_number, status, retry_count, last_publish_date, updated_at
         FROM trials
         ORDER BY updated_at DESC
+        LIMIT 25
     """)
     trials = cursor.fetchall()
 
-    print(f"\n[TRIALS TABLE] Total records: {len(trials)}")
+    print(f"\n[TRIALS TABLE] Total records: {total_trials_count} ({status_summary})")
+    if total_trials_count > len(trials):
+        print(f"Displaying {len(trials)} most recently updated trials:")
     header = f"{'#':<4} | {'Trial Number (ctNumber)':<24} | {'Status':<10} | {'Retries':<7} | {'Publish Date':<25} | {'Updated At'}"
     print(header)
     print("-" * len(header))
@@ -76,13 +92,14 @@ def main():
     conn.close()
 
     try:
-        from ctis_etl import storage
+        from ctis_etl import storage, config
         report_urls = storage.publish_pipeline_status_report()
+        exp_days = getattr(config, "DASHBOARD_EXPIRES_DAYS", 365)
         print("\n[PIPELINE STATUS & DASHBOARD]")
         if "html_browser_url" in report_urls:
-            print(f"Cloud HTML Dashboard (7-day link):  {report_urls['html_browser_url']}")
+            print(f"Cloud HTML Dashboard ({exp_days}-day link):  {report_urls['html_browser_url']}")
         if "json_browser_url" in report_urls:
-            print(f"Cloud JSON Status (7-day link):     {report_urls['json_browser_url']}")
+            print(f"Cloud JSON Status ({exp_days}-day link):     {report_urls['json_browser_url']}")
         if "local_html_path" in report_urls:
             print(f"Local HTML Dashboard (Open in browser): file:///{Path(report_urls['local_html_path']).resolve().as_posix()}")
         if "local_json_path" in report_urls:
