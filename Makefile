@@ -2,7 +2,7 @@
 # Clinical Trial Multi-Container Platform - Makefile
 # ==============================================================================
 
-.PHONY: help build up down restart ps logs logs-eu logs-anz status
+.PHONY: help build up down restart ps logs logs-eu logs-anz status check sync-eu sync-anz report
 
 help:
 	@echo "Available commands:"
@@ -15,6 +15,10 @@ help:
 	@echo "  make logs-eu    - Tail logs from the EU CTIS container"
 	@echo "  make logs-anz   - Tail logs from the ANZCTR container"
 	@echo "  make status     - Check pipeline status for both services"
+	@echo "  make check      - Pre-flight connection checks for both services"
+	@echo "  make sync-eu    - Trigger incremental sync on EU CTIS"
+	@echo "  make sync-anz   - Trigger incremental sync on ANZCTR"
+	@echo "  make report     - Refresh and publish live web dashboards"
 
 build:
 	docker-compose build
@@ -46,4 +50,21 @@ status:
 	@echo ""
 	@echo "=== ANZCTR Status ==="
 	@docker-compose exec anz_clinical_trial python -m anz_etl.main --mode status || true
+
+check:
+	@echo "=== EU CTIS Check ==="
+	@docker-compose exec eu_clinical_trial python -m ctis_etl.main --mode check || true
+	@echo ""
+	@echo "=== ANZCTR Check ==="
+	@docker-compose exec anz_clinical_trial python -m anz_etl.main --mode check || true
+
+sync-eu:
+	docker-compose exec eu_clinical_trial python -m ctis_etl.main --mode incremental
+
+sync-anz:
+	docker-compose exec anz_clinical_trial python -m anz_etl.main --mode incremental
+
+report:
+	@docker-compose exec eu_clinical_trial python -m ctis_etl.main --mode report || true
+	@docker-compose exec anz_clinical_trial python -m anz_etl.main --mode report || true
 

@@ -175,6 +175,39 @@ def get_stats() -> Dict[str, Any]:
     return stats
 
 
+def mark_processing(actrn: str) -> None:
+    """Marks a trial status as PROCESSING."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if config.STATE_BACKEND in ("sqlite", "both"):
+        db_path = get_sqlite_path()
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("""
+                UPDATE anz_trials
+                SET sync_status = 'PROCESSING',
+                    last_checked = ?,
+                    updated_at = ?
+                WHERE actrn = ?
+            """, (now_iso, now_iso, actrn))
+            conn.commit()
+
+
+def get_pending_trials(limit: int = 100) -> List[str]:
+    """Fetches list of pending trial ACTRNs."""
+    pending = []
+    if config.STATE_BACKEND in ("sqlite", "both"):
+        db_path = get_sqlite_path()
+        if db_path.exists():
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT actrn FROM anz_trials WHERE sync_status IN ('PENDING', 'PROCESSING') ORDER BY created_at ASC LIMIT ?",
+                    (limit,)
+                )
+                for row in cursor.fetchall():
+                    pending.append(row[0])
+    return pending
+
+
 def get_failed_trials(limit: int = 50) -> List[Dict[str, Any]]:
     """Fetches list of failed trials for retry."""
     failed = []
