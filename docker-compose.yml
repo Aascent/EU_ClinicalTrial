@@ -1,27 +1,55 @@
-version: '3.8'
+name: clinical_trial_platform
 
 services:
-  ctis-etl:
+  eu_clinical_trial:
     build:
-      context: .
+      context: ./eu_clinical_trial
       dockerfile: Dockerfile
-    container_name: eu_ctis_etl_pipeline
+    container_name: eu_clinical_trial_pipeline
     restart: unless-stopped
     env_file:
-      - .env
+      - ./eu_clinical_trial/.env
     environment:
-      # Run initial sync on container startup
-      # Options: 'historical' (default: full 12,000+ catalog backfill) or 'incremental' (recent daily delta)
-      - RUN_ON_STARTUP=true
-      - STARTUP_MODE=${STARTUP_MODE:-historical}
-      # Cron schedule (Default: Daily at 02:00 AM UTC). Change e.g. to "0 */2 * * *" for every 2 hours
-      - CRON_SCHEDULE=0 2 * * *
+      - RUN_ON_STARTUP=${EU_RUN_ON_STARTUP:-true}
+      - STARTUP_MODE=${EU_STARTUP_MODE:-status}
+      - CRON_SCHEDULE=${EU_CRON_SCHEDULE:-0 2 * * *}
       - PYTHONUNBUFFERED=1
     ports:
-      - "8080:8080"
+      - "${EU_PORT:-8080}:8080"
     volumes:
-      # Persistent local volumes for output files, state database, and logs
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./quarantine:/app/quarantine
-      - ./tracker.db:/app/tracker.db
+      - ./eu_clinical_trial/data:/app/data
+      - ./eu_clinical_trial/logs:/app/logs
+      - ./eu_clinical_trial/quarantine:/app/quarantine
+      - ./eu_clinical_trial/tracker.db:/app/tracker.db
+    networks:
+      - clinical_trial_network
+
+  anz_clinical_trial:
+    build:
+      context: ./anz_clinical_trial
+      dockerfile: Dockerfile
+    container_name: anz_clinical_trial_pipeline
+    restart: unless-stopped
+    env_file:
+      - ./anz_clinical_trial/.env
+    environment:
+      - RUN_ON_STARTUP=${ANZ_RUN_ON_STARTUP:-true}
+      - STARTUP_MODE=${ANZ_STARTUP_MODE:-status}
+      - CRON_SCHEDULE=${ANZ_CRON_SCHEDULE:-0 3 * * *}
+      - PORT=8081
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "${ANZ_PORT:-8081}:8081"
+    volumes:
+      - ./anz_clinical_trial/data:/app/data
+      - ./anz_clinical_trial/logs:/app/logs
+      - ./anz_clinical_trial/quarantine:/app/quarantine
+      - ./anz_clinical_trial/tracker.db:/app/tracker.db
+    networks:
+      - clinical_trial_network
+
+networks:
+  clinical_trial_network:
+    name: clinical_trial_network
+    driver: bridge
+
