@@ -59,6 +59,7 @@ The pipeline structures every trial into an immutable **Bronze Layer** (raw unto
   - [11.1 Document Downloader CLI (`download_trial_docs.py`)](#111-document-downloader-cli-download_trial_docspy)
   - [11.2 State Inspector CLI (`view_db.py`)](#112-state-inspector-cli-view_dbpy)
   - [11.3 System Pre-Flight Diagnostics (`--mode check`)](#113-system-pre-flight-diagnostics---mode-check)
+  - [11.4 Live Pipeline Status & Dashboard Generator (`--mode status`)](#114-live-pipeline-status--dashboard-generator---mode-status)
 - [12. Performance Estimations, Storage Footprint & AWS Costs](#12-performance-estimations-storage-footprint--aws-costs)
   - [12.1 Latency Profile per Trial](#121-latency-profile-per-trial)
   - [12.2 Historical Backfill Throughput (~12,500+ Trials)](#122-historical-backfill-throughput-12500-trials)
@@ -816,10 +817,11 @@ A [Makefile](file:///d:/Workspace/eu_clinical_trial/Makefile) is provided for co
 
 ### 9.2 CLI Operational Modes Reference
 
-The pipeline supports 7 operational modes via `python -m ctis_etl.main --mode <MODE>`:
+The pipeline supports 8 operational modes via `python -m ctis_etl.main --mode <MODE>` (with `report` supported as an alias for `status`):
 
 | Mode Name | Execution Profile | Typical Production Cadence | Description |
 | :--- | :--- | :--- | :--- |
+| **`status`** | Live Status & Dashboard URL | Ad-hoc / Monitoring | Summarizes current database metrics, updates HTML dashboard & JSON metrics in S3 and local disk, and generates 365-day pre-signed browser URLs. |
 | **`historical`** | Full Catalog Dual-Pass | One-time initial setup / disaster recovery | Ingests all ~12,500+ trials page-by-page, skipping previously saved records. |
 | **`new`** | Incremental Lookback | Scheduled every 6 hours | Scans the Search API within lookback window and ingests only unrecorded trials. |
 | **`updates`** | Incremental Lookback | Scheduled daily at 02:00 AM UTC | Scans amended trials within lookback window, archives old copies, and updates dossiers. |
@@ -886,6 +888,12 @@ python -m ctis_etl.main --mode single --ct-number 2026-527084-15-00 --storage lo
 ```bash
 # Process all quarantined and failed records
 python -m ctis_etl.main --mode retry-failed --workers 5
+```
+
+#### 7. Pipeline Status & Public Dashboard URLs
+```bash
+# Display real-time pipeline metrics and generate fresh 365-day pre-signed browser URLs for the HTML dashboard and JSON feed
+python -m ctis_etl.main --mode status
 ```
 
 ---
@@ -1021,6 +1029,26 @@ make check
 3. **SQLite Database Health:** Validates schema creation and WAL journal mode in `tracker.db`.
 4. **Amazon S3 Access:** Validates bucket connectivity and write permissions via `head_bucket`.
 5. **Amazon DynamoDB Health:** Validates connection to the `EU_Clinical` table.
+
+---
+
+### 11.4 Live Pipeline Status & Dashboard Generator (`--mode status`)
+
+Generates and displays the current state of the ETL pipeline, updates local and cloud copies of the HTML dashboard and JSON report, and outputs public pre-signed browser URLs:
+
+```bash
+# Print summary metrics and generate fresh cloud dashboard links
+python -m ctis_etl.main --mode status
+
+# Equivalent Makefile shortcut
+make status
+```
+
+**Output Includes:**
+* Total trials tracked and counts categorized by status (`SUCCESS`, `PENDING`, `FAILED`).
+* Fresh 365-day S3 pre-signed browser URL for the interactive HTML dashboard.
+* Fresh 365-day S3 pre-signed browser URL for the raw JSON status metrics.
+* Local filesystem paths to `./data/pipeline_status.html` and `./data/pipeline_status.json`.
 
 ---
 

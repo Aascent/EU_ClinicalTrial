@@ -36,6 +36,7 @@ This workspace contains a production ETL pipeline extracting EU CTIS clinical tr
 ## 2. CLI Command Dispatches
 
 * **Check System Health:** `python -m ctis_etl.main --mode check`
+* **Pipeline Status & Dashboard:** `python -m ctis_etl.main --mode status`
 * **Historical Backfill:** `python -m ctis_etl.main --mode historical --workers 5`
 * **New Trials Only:** `python -m ctis_etl.main --mode new --lookback-days 7`
 * **Updated Trials Only:** `python -m ctis_etl.main --mode updates --lookback-days 7`

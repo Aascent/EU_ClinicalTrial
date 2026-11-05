@@ -20,11 +20,17 @@ class TestCTISEdgeCasesAndIntegrity(unittest.TestCase):
         self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.temp_db.close()
         self.orig_sqlite_path = config.SQLITE_DB_PATH
+        self.orig_state_backend = config.STATE_BACKEND
+        self.orig_storage_backend = config.STORAGE_BACKEND
         config.SQLITE_DB_PATH = Path(self.temp_db.name)
+        config.STATE_BACKEND = "sqlite"
+        config.STORAGE_BACKEND = "local"
         database.init_sqlite_db()
 
     def tearDown(self):
         config.SQLITE_DB_PATH = self.orig_sqlite_path
+        config.STATE_BACKEND = self.orig_state_backend
+        config.STORAGE_BACKEND = self.orig_storage_backend
         if os.path.exists(self.temp_db.name):
             try:
                 os.remove(self.temp_db.name)
