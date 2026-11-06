@@ -227,9 +227,16 @@ def quarantine_record(actrn: str, raw_content: str, error_reason: str) -> Path:
     return path
 
 
-def publish_status_report(stats: Dict[str, Any]) -> Path:
+def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     """Publishes current pipeline status metrics as JSON and builds the HTML dashboard."""
+    from anz_etl import database
+
     now_utc = datetime.now(timezone.utc)
+    now_str = now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # Retrieve tracked trials from state database
+    trials = database.get_recent_trials(limit=50)
+
     report_data = {
         "registry": "ANZCTR",
         "last_updated": now_utc.isoformat(),
@@ -240,15 +247,67 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
         "storage_backend": config.STORAGE_BACKEND,
         "state_backend": config.STATE_BACKEND,
         "status_code": "HEALTHY" if stats.get("failed", 0) == 0 else "DEGRADED",
+        "recent_trials": trials,
     }
 
-    # Write pipeline_status.json
+    # 1. Write local pipeline_status.json
     status_path = config.STATUS_JSON_PATH
     with open(status_path, "w", encoding="utf-8") as f:
         json.dump(report_data, f, indent=2)
 
-    # Build interactive HTML dashboard
-    now_str = now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
+    # 2. Upload status JSON to S3 first to obtain valid presigned link for the HTML dashboard button
+    json_presigned_url: Optional[str] = None
+    expires_in = 365 * 86400  # 365 days
+    s3 = get_s3_client() if config.STORAGE_BACKEND in ("s3", "both") else None
+
+    if s3:
+        try:
+            s3_json_key = f"{config.S3_PREFIX}pipeline_status.json"
+            s3.put_object(
+                Bucket=config.S3_BUCKET_NAME,
+                Key=s3_json_key,
+                Body=json.dumps(report_data, indent=2).encode("utf-8"),
+                ContentType="application/json",
+                CacheControl="no-cache, no-store, must-revalidate",
+            )
+            json_presigned_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_json_key},
+                ExpiresIn=expires_in,
+            )
+        except Exception as e:
+            logger.error(f"Failed uploading status JSON to S3: {e}")
+
+    target_json_url = json_presigned_url or "pipeline_status.json"
+
+    # 3. Build trials table rows
+    trials_table_rows = ""
+    for t in trials:
+        st = (t.get("sync_status") or "PENDING").upper()
+        badge_cls = "badge-success" if st == "SUCCESS" else ("badge-danger" if st == "FAILED" else "badge-pending")
+        actrn = t.get("actrn", "")
+        title = t.get("title") or f"Trial {actrn}"
+        updated = t.get("updated_at") or t.get("last_checked") or "-"
+        clean_date = updated.replace("T", " ")[:19]
+        err = t.get("error_message") or ""
+        err_html = f"<div style='color: #ef4444; font-size: 11px; margin-top: 4px;'>{err}</div>" if err else ""
+
+        trials_table_rows += f"""
+        <tr>
+          <td><strong>{actrn}</strong>{err_html}</td>
+          <td>{title}</td>
+          <td><span class="badge {badge_cls}">{st}</span></td>
+          <td style="font-family: monospace; font-size: 12px; color: #64748b;">{clean_date}</td>
+        </tr>
+        """
+    if not trials_table_rows:
+        trials_table_rows = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 24px;">No trials synchronized yet. Pipeline will discover and ingest records on schedule.</td></tr>'
+
+    # 4. Generate Interactive HTML Dashboard
+    s3_console_bronze = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_BRONZE_PREFIX}"
+    s3_console_silver = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_SILVER_PREFIX}"
+    s3_console_raw = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_PREFIX}raw/"
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -266,14 +325,39 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
     }}
     .header {{
       background: white;
-      padding: 28px 32px;
+      padding: 24px 32px;
       border-radius: 12px;
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
       margin-bottom: 24px;
       border-left: 6px solid #0284c7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
     }}
-    h1 {{ margin: 0 0 8px 0; font-size: 26px; }}
+    h1 {{ margin: 0 0 6px 0; font-size: 24px; }}
     .subtitle {{ color: #64748b; font-size: 14px; }}
+    .header-btns {{ display: flex; gap: 10px; align-items: center; }}
+    .btn {{
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 6px;
+      background: #0284c7;
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }}
+    .btn:hover {{ background: #0369a1; }}
+    .btn-secondary {{
+      background: #e2e8f0;
+      color: #1e293b;
+    }}
+    .btn-secondary:hover {{ background: #cbd5e1; }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -282,7 +366,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
     }}
     .card {{
       background: white;
-      padding: 22px;
+      padding: 20px 22px;
       border-radius: 12px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
       border-left: 5px solid #0284c7;
@@ -291,33 +375,73 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
     .card.failed {{ border-left-color: #ef4444; }}
     .card.pending {{ border-left-color: #f59e0b; }}
     .card .label {{ color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }}
-    .card .val {{ font-size: 36px; font-weight: 700; margin-top: 8px; color: #0f172a; }}
-    .nav-box {{
+    .card .val {{ font-size: 34px; font-weight: 700; margin-top: 8px; color: #0f172a; }}
+    .section-box {{
       background: white;
-      padding: 20px 24px;
+      padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      margin-bottom: 24px;
     }}
-    .nav-box h3 {{ margin: 0 0 12px 0; font-size: 16px; }}
+    .section-box h3 {{ margin: 0 0 16px 0; font-size: 16px; }}
+    .nav-links {{ display: flex; flex-wrap: wrap; gap: 12px; }}
     .nav-links a {{
       display: inline-block;
       color: #0284c7;
       text-decoration: none;
-      font-weight: 500;
-      margin-right: 20px;
-      padding: 6px 12px;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 8px 14px;
       background: #f0f9ff;
       border-radius: 6px;
       border: 1px solid #bae6fd;
+      transition: background 0.15s;
     }}
-    .nav-links a:hover {{ background: #e0f2fe; text-decoration: underline; }}
+    .nav-links a:hover {{ background: #e0f2fe; }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }}
+    th {{
+      padding: 12px 14px;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #e2e8f0;
+    }}
+    td {{
+      padding: 14px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+    }}
+    tr:hover td {{ background: #f8fafc; }}
+    .badge {{
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }}
+    .badge-success {{ background: #dcfce7; color: #15803d; }}
+    .badge-danger {{ background: #fee2e2; color: #b91c1c; }}
+    .badge-pending {{ background: #fef3c7; color: #b45309; }}
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Australian New Zealand Clinical Trials Registry (ANZCTR) Pipeline</h1>
-    <div class="subtitle">Live status updated: {now_str} | Storage: {config.STORAGE_BACKEND} | State: {config.STATE_BACKEND}</div>
+    <div>
+      <h1>Australian New Zealand Clinical Trials Registry (ANZCTR) Pipeline</h1>
+      <div class="subtitle">Live status updated: {now_str} | Storage: {config.STORAGE_BACKEND} | State: {config.STATE_BACKEND}</div>
+    </div>
+    <div class="header-btns">
+      <button class="btn btn-secondary" onclick="location.reload()">Refresh</button>
+      <a href="{target_json_url}" class="btn" target="_blank">Status JSON API</a>
+    </div>
   </div>
+
   <div class="grid">
     <div class="card">
       <div class="label">Total Tracked</div>
@@ -336,19 +460,42 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
       <div class="val">{stats.get('pending', 0):,}</div>
     </div>
   </div>
-  <div class="nav-box">
-    <h3>Storage & Endpoints</h3>
+
+  <div class="section-box">
+    <h3>Storage Navigation & Registry Endpoints</h3>
     <div class="nav-links">
-      <a href="/bronze/">Browse Bronze Payloads</a>
-      <a href="/silver/">Browse Silver Payloads</a>
-      <a href="/raw/">Browse Raw API Payloads</a>
-      <a href="/pipeline_status.json" target="_blank">Status JSON API</a>
-      <a href="https://api.anzctr.org.au/WebServices/AnzctrWebservices.asmx" target="_blank">ANZCTR Web Services</a>
+      <a href="{target_json_url}" target="_blank">View Status JSON Feed</a>
+      <a href="{s3_console_bronze}" target="_blank">AWS S3 Bronze Console</a>
+      <a href="{s3_console_silver}" target="_blank">AWS S3 Silver Console</a>
+      <a href="{s3_console_raw}" target="_blank">AWS S3 Raw API Console</a>
+      <a href="bronze/">Local Bronze Directory</a>
+      <a href="silver/">Local Silver Directory</a>
+      <a href="raw/">Local Raw Directory</a>
+      <a href="{config.ANZCTR_WS_URL}" target="_blank">ANZCTR Web Services</a>
     </div>
+  </div>
+
+  <div class="section-box">
+    <h3>Tracked Clinical Trials</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 220px;">Trial ACTRN</th>
+          <th>Title / Study Description</th>
+          <th style="width: 140px;">Status</th>
+          <th style="width: 180px;">Last Activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {trials_table_rows}
+      </tbody>
+    </table>
   </div>
 </body>
 </html>
 """
+
+    # 5. Save HTML locally
     dashboard_path = config.DATA_DIR / "index.html"
     status_html_path = config.DATA_DIR / "pipeline_status.html"
     with open(dashboard_path, "w", encoding="utf-8") as f:
@@ -360,54 +507,36 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
         "status_json_path": str(status_path),
         "local_html_path": str(dashboard_path),
         "html_browser_url": None,
-        "json_browser_url": None,
+        "json_browser_url": json_presigned_url,
     }
 
-    if config.STORAGE_BACKEND in ("s3", "both"):
-        s3 = get_s3_client()
-        if s3:
-            try:
-                # 365 days expiration
-                expires_in = 365 * 86400
-                s3_json_key = f"{config.S3_PREFIX}pipeline_status.json"
-                s3_html_key = f"{config.S3_PREFIX}pipeline_status.html"
-
-                s3.put_object(
-                    Bucket=config.S3_BUCKET_NAME,
-                    Key=s3_json_key,
-                    Body=json.dumps(report_data, indent=2).encode("utf-8"),
-                    ContentType="application/json",
-                    CacheControl="no-cache, no-store, must-revalidate",
-                )
-                s3.put_object(
-                    Bucket=config.S3_BUCKET_NAME,
-                    Key=s3_html_key,
-                    Body=html_content.encode("utf-8"),
-                    ContentType="text/html",
-                    CacheControl="no-cache, no-store, must-revalidate",
-                )
-                s3.put_object(
-                    Bucket=config.S3_BUCKET_NAME,
-                    Key=f"{config.S3_PREFIX}index.html",
-                    Body=html_content.encode("utf-8"),
-                    ContentType="text/html",
-                    CacheControl="no-cache, no-store, must-revalidate",
-                )
-
-                json_url = s3.generate_presigned_url(
-                    "get_object",
-                    Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_json_key},
-                    ExpiresIn=expires_in,
-                )
-                html_url = s3.generate_presigned_url(
-                    "get_object",
-                    Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_html_key},
-                    ExpiresIn=expires_in,
-                )
-                results["html_browser_url"] = html_url
-                results["json_browser_url"] = json_url
-            except Exception as e:
-                logger.error(f"Failed uploading status report to S3: {e}")
+    # 6. Upload HTML to S3 and generate pre-signed URL
+    if s3:
+        try:
+            s3_html_key = f"{config.S3_PREFIX}pipeline_status.html"
+            s3.put_object(
+                Bucket=config.S3_BUCKET_NAME,
+                Key=s3_html_key,
+                Body=html_content.encode("utf-8"),
+                ContentType="text/html",
+                CacheControl="no-cache, no-store, must-revalidate",
+            )
+            s3.put_object(
+                Bucket=config.S3_BUCKET_NAME,
+                Key=f"{config.S3_PREFIX}index.html",
+                Body=html_content.encode("utf-8"),
+                ContentType="text/html",
+                CacheControl="no-cache, no-store, must-revalidate",
+            )
+            html_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_html_key},
+                ExpiresIn=expires_in,
+            )
+            results["html_browser_url"] = html_url
+        except Exception as e:
+            logger.error(f"Failed uploading HTML dashboard to S3: {e}")
 
     return results
+
 

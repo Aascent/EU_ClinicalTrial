@@ -34,7 +34,7 @@ services:
       - ./anz_clinical_trial/.env
     environment:
       - RUN_ON_STARTUP=${ANZ_RUN_ON_STARTUP:-true}
-      - STARTUP_MODE=${ANZ_STARTUP_MODE:-status}
+      - STARTUP_MODE=${ANZ_STARTUP_MODE:-raw}
       - CRON_SCHEDULE=${ANZ_CRON_SCHEDULE:-0 3 * * *}
       - PORT=8081
       - PYTHONUNBUFFERED=1

@@ -106,6 +106,7 @@ def record_trial(
                 ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
                 ON CONFLICT(actrn) DO UPDATE SET
                     title=COALESCE(excluded.title, anz_trials.title),
+                    sync_status=excluded.sync_status,
                     last_updated_date=COALESCE(excluded.last_updated_date, anz_trials.last_updated_date),
                     updated_at=excluded.updated_at
             """, (actrn, title, registration_date, last_updated_date, sync_status, now_iso, now_iso, now_iso))
@@ -224,4 +225,23 @@ def get_failed_trials(limit: int = 50) -> List[Dict[str, Any]]:
                 for row in cursor.fetchall():
                     failed.append(dict(row))
     return failed
+
+
+def get_recent_trials(limit: int = 50) -> List[Dict[str, Any]]:
+    """Fetches list of recently tracked trials for the dashboard."""
+    trials = []
+    if config.STATE_BACKEND in ("sqlite", "both"):
+        db_path = get_sqlite_path()
+        if db_path.exists():
+            with sqlite3.connect(db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT actrn, title, registration_date, last_updated_date, sync_status, attempts, last_checked, error_message, updated_at "
+                    "FROM anz_trials ORDER BY updated_at DESC LIMIT ?",
+                    (limit,)
+                )
+                for row in cursor.fetchall():
+                    trials.append(dict(row))
+    return trials
 

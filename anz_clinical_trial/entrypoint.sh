@@ -40,7 +40,7 @@ python -m anz_etl.main --mode report || true
 
 # Launch startup sync if configured
 if [ "${RUN_ON_STARTUP:-true}" = "true" ]; then
-    STARTUP_MODE="${STARTUP_MODE:-status}"
+    STARTUP_MODE="${STARTUP_MODE:-raw}"
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Running startup task with mode: ${STARTUP_MODE}..."
     python -m anz_etl.main --mode "${STARTUP_MODE}" || true
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Startup task finished."

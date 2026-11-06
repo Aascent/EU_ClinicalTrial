@@ -189,6 +189,16 @@ def run_collect_raw(actrn: Optional[str] = None, keyword: Optional[str] = None) 
         )
         print(f" [{idx}/5] {api_name:<14}: {size_bytes:>7,} bytes -> {saved_path.name}")
 
+    # Also save Bronze record for target_actrn
+    main_raw = raw_payloads.get("detailv2") or raw_payloads.get("detail") or raw_payloads.get("result") or ""
+    if main_raw:
+        save_bronze_record(target_actrn, main_raw, is_xml=True)
+        try:
+            domains = parse_anzctr_trial(main_raw, target_actrn)
+            save_silver_records(target_actrn, domains)
+        except Exception as e:
+            logger.info(f"Silver domain extraction skipped: {e}")
+
     # Record trial in tracker DB
     init_db()
     record_trial(
@@ -197,10 +207,15 @@ def run_collect_raw(actrn: Optional[str] = None, keyword: Optional[str] = None) 
         sync_status="SUCCESS",
     )
     stats = get_stats()
-    publish_status_report(stats)
+    report_res = publish_status_report(stats)
 
     print("========================================================")
     print(" Raw data collection complete! Saved XML + JSON in Bronze.")
+    if isinstance(report_res, dict):
+        if report_res.get("html_browser_url"):
+            print(f" S3 Dashboard URL   : {report_res['html_browser_url']}")
+        if report_res.get("json_browser_url"):
+            print(f" S3 Status JSON API : {report_res['json_browser_url']}")
     print("========================================================\n")
     return 0
 
@@ -216,17 +231,20 @@ def run_pipeline(
 
     client = AnzctrClient()
 
-    # Discover trials from search endpoint
+    # Discover trials from search endpoint safely
     search_keyword = "" if mode == "historical" else "Australia"
-    raw_search = client.fetch_raw_search(search_text=search_keyword, paging=100)
-    save_raw_endpoint_payload("Search", f"search_{mode}_{datetime.now(timezone.utc).strftime('%Y%m%d')}", raw_search)
+    try:
+        raw_search = client.fetch_raw_search(search_text=search_keyword, paging=100)
+        save_raw_endpoint_payload("Search", f"search_{mode}_{datetime.now(timezone.utc).strftime('%Y%m%d')}", raw_search)
+    except Exception as e:
+        logger.warning(f"Search endpoint query skipped or failed: {e}")
 
     # In single/test mode, ensure at least sample trials are tracked
     pending = get_pending_trials(limit=50)
-    if not pending and mode in ("historical", "incremental"):
+    if not pending and mode in ("historical", "incremental", "raw"):
         sample_actrns = ["ACTRN12613000001741"]
         for s in sample_actrns:
-            record_trial(actrn=s, title=f"Sample {s}")
+            record_trial(actrn=s, title=f"Sample Trial {s}", sync_status="PENDING")
         pending = sample_actrns
 
     logger.info(f"Found {len(pending)} pending trials to process.")
