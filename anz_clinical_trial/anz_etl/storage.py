@@ -563,6 +563,35 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
       margin-bottom: 24px;
     }}
     .section-box h3 {{ margin: 0 0 16px 0; font-size: 16px; }}
+    .table-container {{
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }}
+    .table-container::-webkit-scrollbar {{
+      width: 8px;
+      height: 8px;
+    }}
+    .table-container::-webkit-scrollbar-track {{
+      background: #f8fafc;
+      border-radius: 4px;
+    }}
+    .table-container::-webkit-scrollbar-thumb {{
+      background: #cbd5e1;
+      border-radius: 4px;
+    }}
+    .table-container::-webkit-scrollbar-thumb:hover {{
+      background: #94a3b8;
+    }}
+    thead th {{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #f8fafc;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }}
     table {{
       width: 100%;
       border-collapse: collapse;
@@ -653,21 +682,26 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
   </div>
 
   <div class="section-box">
-    <h3>Tracked Clinical Trials <span style="font-size: 13px; font-weight: normal; color: #64748b; margin-left: 8px;">(All timestamps in <strong>UTC</strong>)</span></h3>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 50px; text-align: center;">No.</th>
-          <th style="width: 200px;">Trial ACTRN</th>
-          <th>Title / Study Description</th>
-          <th style="width: 130px;">Status</th>
-          <th style="width: 260px;">Last Activity (UTC / IST)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {trials_table_rows}
-      </tbody>
-    </table>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+      <h3 style="margin: 0; font-size: 16px;">Tracked Clinical Trials <span style="font-size: 13px; font-weight: normal; color: #64748b; margin-left: 8px;">(All timestamps in <strong>UTC</strong>)</span></h3>
+      <span style="font-size: 12px; color: #64748b; font-weight: 600; background: #f1f5f9; padding: 4px 10px; border-radius: 12px;">Showing {len(trials)} trials</span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px; text-align: center;">No.</th>
+            <th style="width: 200px;">Trial ACTRN</th>
+            <th>Title / Study Description</th>
+            <th style="width: 130px;">Status</th>
+            <th style="width: 260px;">Last Activity (UTC / IST)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trials_table_rows}
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Info & Limits Modal -->
