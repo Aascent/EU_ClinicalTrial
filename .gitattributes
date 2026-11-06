@@ -14,3 +14,4 @@ Dockerfile text eol=lf
 *.json text
 *.yml text
 *.yaml text
+
