@@ -432,6 +432,98 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
       color: #1e293b;
     }}
     .btn-secondary:hover {{ background: #cbd5e1; }}
+    .btn-info {{
+      background: #0284c7;
+      color: white;
+    }}
+    .btn-info:hover {{ background: #0369a1; }}
+    .modal-overlay {{
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(3px);
+    }}
+    .modal-card {{
+      background: white;
+      border-radius: 14px;
+      max-width: 680px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      animation: modalFadeIn 0.2s ease-out;
+    }}
+    @keyframes modalFadeIn {{
+      from {{ opacity: 0; transform: translateY(-12px) scale(0.98); }}
+      to {{ opacity: 1; transform: translateY(0) scale(1); }}
+    }}
+    .modal-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }}
+    .modal-header h3 {{
+      margin: 0;
+      font-size: 18px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }}
+    .close-btn {{
+      background: transparent;
+      border: none;
+      font-size: 22px;
+      color: #64748b;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }}
+    .close-btn:hover {{
+      background: #e2e8f0;
+      color: #0f172a;
+    }}
+    .modal-body {{
+      padding: 24px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }}
+    .info-table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }}
+    .info-table th {{
+      padding: 10px 14px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #cbd5e1;
+    }}
+    .info-table td {{
+      padding: 12px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+    }}
+    .info-callout {{
+      background: #f0f9ff;
+      border-left: 4px solid #0284c7;
+      padding: 12px 16px;
+      border-radius: 6px;
+      color: #0369a1;
+      font-size: 13px;
+      line-height: 1.5;
+    }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -505,6 +597,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
         <span class="status-dot {cron_dot_cls}"></span>
         <span>Cron: {cron_status_str} ({cron_schedule_str})</span>
       </div>
+      <button class="btn btn-info" onclick="openInfoModal()" title="View Summary of Limits & Pipeline Info">ℹ️ Limits & Info</button>
       <button class="btn btn-secondary" onclick="location.reload()">Refresh</button>
       <a href="{target_json_url}" class="btn" target="_blank">Status JSON API</a>
     </div>
@@ -562,6 +655,71 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
       </tbody>
     </table>
   </div>
+
+  <!-- Info & Limits Modal -->
+  <div id="infoModal" class="modal-overlay" onclick="handleOverlayClick(event)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>ℹ️ Pipeline Limits & Configuration</h3>
+        <button class="close-btn" onclick="closeInfoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="margin: 0 0 14px 0; color: #1e293b; font-size: 15px; font-weight: 700;">3. Summary of Limits:</h4>
+        <table class="info-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Setting</th>
+              <th style="width: 25%;">Current Value</th>
+              <th style="width: 50%;">What it Controls</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Batch Size per Run</strong></td>
+              <td><span style="color: #0284c7; font-weight: 700;">50 records</span></td>
+              <td>Maximum number of pending trials processed in one 15-minute cycle</td>
+            </tr>
+            <tr>
+              <td><strong>Search Query Window</strong></td>
+              <td><span style="color: #0284c7; font-weight: 700;">100 records</span></td>
+              <td>Maximum search results inspected per query</td>
+            </tr>
+            <tr>
+              <td><strong>Workers / Threads</strong></td>
+              <td><span style="color: #0284c7; font-weight: 700;">5 parallel workers</span></td>
+              <td>Concurrent downloads to keep processing fast</td>
+            </tr>
+            <tr>
+              <td><strong>Lookback Window</strong></td>
+              <td><span style="color: #0284c7; font-weight: 700;">7 days</span></td>
+              <td>How far back it checks for newly updated trials</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="info-callout">
+          <strong>Duplicate Prevention & Cadence:</strong> Every 15 minutes (<code>{cron_schedule_str}</code>), the pipeline checks for newly registered or modified trials. When no new records exist, <strong>0 records</strong> are downloaded because already-synced trials are skipped to conserve network bandwidth and avoid registry rate limits.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openInfoModal() {{
+      document.getElementById('infoModal').style.display = 'flex';
+    }}
+    function closeInfoModal() {{
+      document.getElementById('infoModal').style.display = 'none';
+    }}
+    function handleOverlayClick(event) {{
+      if (event.target === document.getElementById('infoModal')) {{
+        closeInfoModal();
+      }}
+    }}
+    document.addEventListener('keydown', function(e) {{
+      if (e.key === 'Escape') closeInfoModal();
+    }});
+  </script>
 </body>
 </html>
 """
