@@ -29,6 +29,7 @@ from anz_etl.database import (
     get_pending_trials,
     get_stats,
     init_db,
+    is_trial_tracked,
     mark_processing,
     record_trial,
     update_trial_status,
@@ -169,6 +170,25 @@ DEFAULT_SAMPLE_TRIALS = [
     ("ACTRN12622000003456", "Pediatric Diffuse Intrinsic Pontine Glioma (DIPG) Biomarker Investigation"),
     ("ACTRN12623000004567", "High-Flow Nasal Oxygen vs CPAP in Acute Hypoxemic Respiratory Failure"),
     ("ACTRN12624000005678", "Genomic-Guided Therapy in Refractory Metastatic Pancreatic Adenocarcinoma"),
+    ("ACTRN12623000006789", "Novel Monoclonal Antibody Therapy in Early-Stage HER2+ Breast Cancer"),
+    ("ACTRN12622000007890", "Efficacy of Sodium-Glucose Cotransporter-2 (SGLT2) Inhibitors in Heart Failure with Preserved Ejection Fraction"),
+    ("ACTRN12621000008901", "Evaluation of Disease-Modifying Therapies in Prodromal Alzheimer's Disease"),
+    ("ACTRN12620000090123", "Targeted Next-Generation Sequencing for Precision Therapy in Non-Small Cell Lung Cancer (NSCLC)"),
+    ("ACTRN12619000010234", "Clinical Outcomes of CAR-T Cell Therapy in Relapsed or Refractory B-Cell Lymphoma"),
+    ("ACTRN12623000011345", "Multi-Center Trial of Biologic Therapy in Severe Refractory Eosinophilic Asthma"),
+    ("ACTRN12622000012456", "Efficacy of Deep Brain Stimulation in Advanced Parkinson's Disease with Motor Fluctuations"),
+    ("ACTRN12621000013567", "Comparative Trial of Direct Oral Anticoagulants (DOACs) in Atrial Fibrillation with Renal Impairment"),
+    ("ACTRN12624000014678", "Phase III Investigation of Adjuvant Immunotherapy in High-Risk Stage III Colorectal Carcinoma"),
+    ("ACTRN12620000015789", "Stem Cell Transplantation and Conditioning Regimens in Adult Acute Myeloid Leukemia"),
+    ("ACTRN12622000016890", "Evaluation of JAK-STAT Inhibitors in Moderate to Severe Rheumatoid Arthritis"),
+    ("ACTRN12623000017901", "Randomized Controlled Trial of Neuroprotective Agents in Acute Ischemic Stroke"),
+    ("ACTRN12621000018012", "Efficacy of Triplet Inhaler Therapy in Moderate to Severe Chronic Obstructive Pulmonary Disease (COPD)"),
+    ("ACTRN12624000019123", "Targeted Bruton Tyrosine Kinase (BTK) Inhibitor in Chronic Lymphocytic Leukemia"),
+    ("ACTRN12620000020234", "Phase II Trial of Neoadjuvant Chemoradiotherapy in Esophageal and Gastroesophageal Junction Cancer"),
+    ("ACTRN12622000021345", "Long-Term Cognitive and Neurological Assessment in Post-Viral Syndromes (Long COVID)"),
+    ("ACTRN12623000022456", "Personalized Neoantigen Peptide Vaccine in Resected High-Risk Cutaneous Squamous Cell Carcinoma"),
+    ("ACTRN12621000023567", "Evaluation of Low-Dose Ketamine Infusions for Treatment-Resistant Major Depressive Disorder"),
+    ("ACTRN12624000024678", "Multi-Omics Profiling and Targeted Therapy in Refractory Ovarian Clear Cell Carcinoma"),
 ]
 
 
@@ -249,6 +269,11 @@ def run_pipeline(
         save_raw_endpoint_payload("Search", f"search_{mode}_{datetime.now(timezone.utc).strftime('%Y%m%d')}", raw_search)
     except Exception as e:
         logger.warning(f"Search endpoint query skipped or failed: {e}")
+
+    # Ensure all trials in catalog are tracked in state database
+    for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
+        if not is_trial_tracked(s_actrn):
+            record_trial(actrn=s_actrn, title=s_title, sync_status="PENDING")
 
     # In single/test mode, ensure representative trials are tracked
     pending = get_pending_trials(limit=50)

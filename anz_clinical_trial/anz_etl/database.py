@@ -136,6 +136,17 @@ def init_db() -> None:
         sync_state_from_dynamodb()
 
 
+def is_trial_tracked(actrn: str) -> bool:
+    """Returns True if the trial is already tracked in SQLite."""
+    db_path = get_sqlite_path()
+    if not db_path.exists():
+        return False
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM anz_trials WHERE actrn = ? LIMIT 1", (actrn,))
+        return cursor.fetchone() is not None
+
+
 def record_trial(
     actrn: str,
     title: Optional[str] = None,
