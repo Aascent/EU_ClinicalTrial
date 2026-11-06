@@ -33,7 +33,10 @@ def get_s3_client():
         )
         _s3_client = session.client(
             "s3",
-            config=Config(retries={"max_attempts": 3, "mode": "standard"})
+            config=Config(
+                signature_version="s3v4",
+                retries={"max_attempts": 3, "mode": "standard"}
+            )
         )
         return _s3_client
     except ImportError:
