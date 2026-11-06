@@ -34,7 +34,10 @@ def get_s3_client():
         )
         _s3_client = session.client(
             "s3",
-            config=Config(retries={"max_attempts": 4, "mode": "adaptive"})
+            config=Config(
+                signature_version="s3v4",
+                retries={"max_attempts": 4, "mode": "adaptive"}
+            )
         )
         return _s3_client
     except Exception as e:
@@ -287,7 +290,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
 
     # 2. Upload status JSON to S3 first to obtain valid presigned link for the HTML dashboard button
     json_presigned_url: Optional[str] = None
-    expires_in = 365 * 86400  # 365 days
+    expires_in = 7 * 86400  # 7 days (AWS SigV4 maximum, refreshed automatically)
     s3 = get_s3_client() if config.STORAGE_BACKEND in ("s3", "both") else None
 
     if s3:
