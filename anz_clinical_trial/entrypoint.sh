@@ -57,3 +57,4 @@ echo "=========================================================="
 # Stream application and cron logs to Docker standard output
 echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Following pipeline logs..."
 tail -F /app/logs/anz_etl.log /app/logs/cron.log
+

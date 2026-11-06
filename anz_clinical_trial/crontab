@@ -8,3 +8,4 @@ PATH=/usr/local/bin:/usr/bin:/bin
 0 */6 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode new >> /app/logs/cron.log 2>&1"
 # Daily HTML dashboard report at 04:00 AM UTC
 0 4 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode report >> /app/logs/cron.log 2>&1"
+
