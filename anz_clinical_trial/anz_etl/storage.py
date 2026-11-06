@@ -350,24 +350,64 @@ def publish_status_report(stats: Dict[str, Any]) -> Path:
 </html>
 """
     dashboard_path = config.DATA_DIR / "index.html"
+    status_html_path = config.DATA_DIR / "pipeline_status.html"
     with open(dashboard_path, "w", encoding="utf-8") as f:
         f.write(html_content)
+    with open(status_html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    results = {
+        "status_json_path": str(status_path),
+        "local_html_path": str(dashboard_path),
+        "html_browser_url": None,
+        "json_browser_url": None,
+    }
 
     if config.STORAGE_BACKEND in ("s3", "both"):
         s3 = get_s3_client()
         if s3:
-            s3.put_object(
-                Bucket=config.S3_BUCKET_NAME,
-                Key=f"{config.S3_PREFIX}pipeline_status.json",
-                Body=json.dumps(report_data, indent=2).encode("utf-8"),
-                ContentType="application/json",
-            )
-            s3.put_object(
-                Bucket=config.S3_BUCKET_NAME,
-                Key=f"{config.S3_PREFIX}index.html",
-                Body=html_content.encode("utf-8"),
-                ContentType="text/html",
-            )
+            try:
+                # 365 days expiration
+                expires_in = 365 * 86400
+                s3_json_key = f"{config.S3_PREFIX}pipeline_status.json"
+                s3_html_key = f"{config.S3_PREFIX}pipeline_status.html"
 
-    return status_path
+                s3.put_object(
+                    Bucket=config.S3_BUCKET_NAME,
+                    Key=s3_json_key,
+                    Body=json.dumps(report_data, indent=2).encode("utf-8"),
+                    ContentType="application/json",
+                    CacheControl="no-cache, no-store, must-revalidate",
+                )
+                s3.put_object(
+                    Bucket=config.S3_BUCKET_NAME,
+                    Key=s3_html_key,
+                    Body=html_content.encode("utf-8"),
+                    ContentType="text/html",
+                    CacheControl="no-cache, no-store, must-revalidate",
+                )
+                s3.put_object(
+                    Bucket=config.S3_BUCKET_NAME,
+                    Key=f"{config.S3_PREFIX}index.html",
+                    Body=html_content.encode("utf-8"),
+                    ContentType="text/html",
+                    CacheControl="no-cache, no-store, must-revalidate",
+                )
+
+                json_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_json_key},
+                    ExpiresIn=expires_in,
+                )
+                html_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": config.S3_BUCKET_NAME, "Key": s3_html_key},
+                    ExpiresIn=expires_in,
+                )
+                results["html_browser_url"] = html_url
+                results["json_browser_url"] = json_url
+            except Exception as e:
+                logger.error(f"Failed uploading status report to S3: {e}")
+
+    return results
 

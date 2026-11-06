@@ -142,7 +142,7 @@ def run_status() -> int:
     """Displays formatted status report and updates HTML dashboard."""
     init_db()
     stats = get_stats()
-    publish_status_report(stats)
+    report_res = publish_status_report(stats)
 
     print("\n=================================================================")
     print("         ANZCTR Data Pipeline - Current Status Report            ")
@@ -152,7 +152,11 @@ def run_status() -> int:
     print(f"Failed / Quarantined : {stats.get('failed', 0):,}")
     print(f"Pending Execution    : {stats.get('pending', 0):,}")
     print("-----------------------------------------------------------------")
-    print(f"Dashboard URL        : http://0.0.0.0:{config.PORT}/")
+    print(f"Local Dashboard URL  : http://0.0.0.0:{config.PORT}/")
+    if isinstance(report_res, dict) and report_res.get("html_browser_url"):
+        print(f"S3 Cloud Dashboard   : {report_res['html_browser_url']}")
+    if isinstance(report_res, dict) and report_res.get("json_browser_url"):
+        print(f"S3 Status JSON API   : {report_res['json_browser_url']}")
     print(f"Status JSON          : {config.STATUS_JSON_PATH}")
     print("=================================================================\n")
     return 0
