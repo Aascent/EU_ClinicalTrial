@@ -33,13 +33,15 @@ COPY crontab /etc/cron.d/anz-cron
 COPY entrypoint.sh .
 
 # Configure permissions for cron and entrypoint (ensuring Unix LF line endings)
-RUN chmod 0644 /etc/cron.d/anz-cron && \
-    chmod +x entrypoint.sh && \
+RUN sed -i 's/\r$//' entrypoint.sh && \
+    sed -i 's/\r$//' /etc/cron.d/anz-cron && \
+    chmod 0644 /etc/cron.d/anz-cron && \
+    chmod +x /app/entrypoint.sh && \
     mkdir -p data logs quarantine
 
 # Expose Web Dashboard Port (default 8081)
 EXPOSE 8081
 
-# Run entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Run entrypoint script via bash to guarantee error-free execution
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
 
