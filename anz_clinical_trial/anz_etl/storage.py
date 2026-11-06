@@ -318,7 +318,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
         actrn = t.get("actrn", "")
         title = t.get("title") or f"Trial {actrn}"
         updated = t.get("updated_at") or t.get("last_checked") or "-"
-        clean_date = updated.replace("T", " ")[:19]
+        clean_date = (updated.replace("T", " ")[:19] + " UTC") if updated != "-" else "-"
         err = t.get("error_message") or ""
         err_html = f"<div style='color: #ef4444; font-size: 11px; margin-top: 4px;'>{err}</div>" if err else ""
 
@@ -586,7 +586,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
   <div class="header">
     <div>
       <h1>Australian New Zealand Clinical Trials Registry (ANZCTR) Pipeline</h1>
-      <div class="subtitle">Live status updated: {now_str} | Storage: {config.STORAGE_BACKEND} | State: {config.STATE_BACKEND}</div>
+      <div class="subtitle">Live status updated: <strong>{now_str}</strong> <span id="localTimeHint" style="color: #0284c7; font-weight: 600; margin-left: 4px;"></span> | Timezone: <strong>UTC (GMT+0)</strong> | Storage: {config.STORAGE_BACKEND} | State: {config.STATE_BACKEND}</div>
     </div>
     <div class="header-btns">
       <div class="status-pill">
@@ -640,14 +640,14 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
   </div>
 
   <div class="section-box">
-    <h3>Tracked Clinical Trials</h3>
+    <h3>Tracked Clinical Trials <span style="font-size: 13px; font-weight: normal; color: #64748b; margin-left: 8px;">(All timestamps in <strong>UTC</strong>)</span></h3>
     <table>
       <thead>
         <tr>
           <th style="width: 220px;">Trial ACTRN</th>
           <th>Title / Study Description</th>
           <th style="width: 140px;">Status</th>
-          <th style="width: 180px;">Last Activity</th>
+          <th style="width: 200px;">Last Activity (UTC)</th>
         </tr>
       </thead>
       <tbody>
@@ -694,6 +694,11 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
               <td><span style="color: #0284c7; font-weight: 700;">7 days</span></td>
               <td>How far back it checks for newly updated trials</td>
             </tr>
+            <tr>
+              <td><strong>Pipeline Timezone</strong></td>
+              <td><span style="color: #0284c7; font-weight: 700;">UTC (GMT+0)</span></td>
+              <td>Server standard. India (IST) is UTC + 5:30 (e.g. 09:30 UTC = 15:00 IST)</td>
+            </tr>
           </tbody>
         </table>
 
@@ -719,6 +724,12 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     document.addEventListener('keydown', function(e) {{
       if (e.key === 'Escape') closeInfoModal();
     }});
+    try {{
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
+      const localStr = new Date().toLocaleTimeString([], {{ hour: '2-digit', minute: '2-digit' }});
+      const el = document.getElementById('localTimeHint');
+      if (el) el.textContent = `(Your local time: ${{localStr}} ${{tz}})`;
+    }} catch(e) {{}}
   </script>
 </body>
 </html>
