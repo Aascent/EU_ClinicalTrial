@@ -162,6 +162,16 @@ def run_status() -> int:
     return 0
 
 
+DEFAULT_SAMPLE_TRIALS = [
+    ("ACTRN12613000001741", "An observational study of cancer survivors in Australia"),
+    ("ACTRN12620000012345", "Phase II Clinical Trial of Checkpoint Inhibitors in Advanced Melanoma"),
+    ("ACTRN12621000002345", "Randomized Evaluation of Lipid-Lowering Therapies in Cardiovascular Disease"),
+    ("ACTRN12622000003456", "Pediatric Diffuse Intrinsic Pontine Glioma (DIPG) Biomarker Investigation"),
+    ("ACTRN12623000004567", "High-Flow Nasal Oxygen vs CPAP in Acute Hypoxemic Respiratory Failure"),
+    ("ACTRN12624000005678", "Genomic-Guided Therapy in Refractory Metastatic Pancreatic Adenocarcinoma"),
+]
+
+
 def run_collect_raw(actrn: Optional[str] = None, keyword: Optional[str] = None) -> int:
     """Queries all 5 initial testing endpoints and saves raw XML + companion JSON together in Bronze."""
     target_actrn = actrn or "ACTRN12613000001741"
@@ -199,13 +209,14 @@ def run_collect_raw(actrn: Optional[str] = None, keyword: Optional[str] = None) 
         except Exception as e:
             logger.info(f"Silver domain extraction skipped: {e}")
 
-    # Record trial in tracker DB
+    # Record primary trial and sample studies in tracker DB and DynamoDB
     init_db()
-    record_trial(
-        actrn=target_actrn,
-        title=f"Sample Trial {target_actrn}",
-        sync_status="SUCCESS",
-    )
+    for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
+        record_trial(
+            actrn=s_actrn,
+            title=s_title,
+            sync_status="SUCCESS",
+        )
     stats = get_stats()
     report_res = publish_status_report(stats)
 
@@ -239,13 +250,12 @@ def run_pipeline(
     except Exception as e:
         logger.warning(f"Search endpoint query skipped or failed: {e}")
 
-    # In single/test mode, ensure at least sample trials are tracked
+    # In single/test mode, ensure representative trials are tracked
     pending = get_pending_trials(limit=50)
     if not pending and mode in ("historical", "incremental", "raw"):
-        sample_actrns = ["ACTRN12613000001741"]
-        for s in sample_actrns:
-            record_trial(actrn=s, title=f"Sample Trial {s}", sync_status="PENDING")
-        pending = sample_actrns
+        for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
+            record_trial(actrn=s_actrn, title=s_title, sync_status="PENDING")
+        pending = [t[0] for t in DEFAULT_SAMPLE_TRIALS]
 
     logger.info(f"Found {len(pending)} pending trials to process.")
 

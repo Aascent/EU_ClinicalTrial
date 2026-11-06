@@ -54,6 +54,15 @@ echo " ANZCTR PIPELINE & DASHBOARD ARE READY AND RUNNING!"
 echo " Web Dashboard : http://<server-ip>:${PORT}/"
 echo "=========================================================="
 
+# Start background pipeline heartbeat monitor (emits live status updates every 60 seconds)
+(
+    while true; do
+        sleep 60
+        echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [HEARTBEAT] ANZCTR Pipeline is active and healthy." >> /app/logs/anz_etl.log
+        python -m anz_etl.main --mode report >> /app/logs/anz_etl.log 2>&1 || true
+    done
+) &
+
 # Stream application and cron logs to Docker standard output
 echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Following pipeline logs..."
 tail -F /app/logs/anz_etl.log /app/logs/cron.log

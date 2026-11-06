@@ -2,6 +2,8 @@
 # ANZCTR Pipeline Cron Schedule
 # ==============================================================================
 PATH=/usr/local/bin:/usr/bin:/bin
+# Sync check every 15 minutes
+*/15 * * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode incremental >> /app/logs/cron.log 2>&1"
 # Daily incremental sync at 03:00 AM UTC
 0 3 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode incremental >> /app/logs/cron.log 2>&1"
 # Check for new trials every 6 hours

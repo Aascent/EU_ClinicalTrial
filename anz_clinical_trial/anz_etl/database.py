@@ -81,10 +81,59 @@ def init_sqlite_db() -> None:
         conn.commit()
 
 
+def sync_state_from_dynamodb() -> int:
+    """Restores tracked trials from DynamoDB into local SQLite state."""
+    if config.STATE_BACKEND not in ("dynamodb", "both"):
+        return 0
+    table = get_dynamodb_table()
+    if not table:
+        return 0
+    try:
+        scanned_items = []
+        resp = table.scan()
+        scanned_items.extend(resp.get("Items", []))
+        while "LastEvaluatedKey" in resp:
+            resp = table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
+            scanned_items.extend(resp.get("Items", []))
+
+        if not scanned_items:
+            return 0
+
+        init_sqlite_db()
+        with sqlite3.connect(get_sqlite_path()) as conn:
+            for item in scanned_items:
+                actrn = item.get(config.DYNAMODB_PARTITION_KEY) or item.get("actrn")
+                if not actrn:
+                    continue
+                conn.execute("""
+                    INSERT OR IGNORE INTO anz_trials (
+                        actrn, title, registration_date, last_updated_date,
+                        sync_status, attempts, last_checked, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+                """, (
+                    actrn,
+                    item.get("title", f"Trial {actrn}"),
+                    item.get("registration_date", ""),
+                    item.get("last_updated_date", ""),
+                    item.get("sync_status", "SUCCESS"),
+                    item.get("last_checked", ""),
+                    item.get("created_at", ""),
+                    item.get("updated_at", ""),
+                ))
+            conn.commit()
+        logger.info(f"Synchronized {len(scanned_items)} trials from DynamoDB into local SQLite state.")
+        return len(scanned_items)
+    except Exception as e:
+        logger.warning(f"Failed syncing from DynamoDB: {e}")
+        return 0
+
+
 def init_db() -> None:
     """Initializes state tracking databases."""
     if config.STATE_BACKEND in ("sqlite", "both"):
         init_sqlite_db()
+    if config.STATE_BACKEND in ("dynamodb", "both"):
+        sync_state_from_dynamodb()
 
 
 def record_trial(
@@ -111,6 +160,26 @@ def record_trial(
                     updated_at=excluded.updated_at
             """, (actrn, title, registration_date, last_updated_date, sync_status, now_iso, now_iso, now_iso))
             conn.commit()
+
+
+    if config.STATE_BACKEND in ("dynamodb", "both"):
+        table = get_dynamodb_table()
+        if table:
+            try:
+                table.put_item(
+                    Item={
+                        config.DYNAMODB_PARTITION_KEY: actrn,
+                        "title": title or f"Trial {actrn}",
+                        "sync_status": sync_status,
+                        "registration_date": registration_date or "",
+                        "last_updated_date": last_updated_date or "",
+                        "last_checked": now_iso,
+                        "created_at": now_iso,
+                        "updated_at": now_iso,
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Failed recording DynamoDB item {actrn}: {e}")
 
 
 def update_trial_status(
@@ -141,7 +210,7 @@ def update_trial_status(
         if table:
             try:
                 table.update_item(
-                    Key={"pk": f"{config.DYNAMODB_PARTITION_KEY}#{actrn}"},
+                    Key={config.DYNAMODB_PARTITION_KEY: actrn},
                     UpdateExpression="SET sync_status = :s, last_checked = :c, error_message = :e, updated_at = :u",
                     ExpressionAttributeValues={
                         ":s": status,
