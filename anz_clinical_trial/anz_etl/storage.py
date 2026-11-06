@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -312,26 +312,36 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
 
     # 3. Build trials table rows
     trials_table_rows = ""
-    for t in trials:
+    for idx, t in enumerate(trials, start=1):
         st = (t.get("sync_status") or "PENDING").upper()
         badge_cls = "badge-success" if st == "SUCCESS" else ("badge-danger" if st == "FAILED" else "badge-pending")
         actrn = t.get("actrn", "")
         title = t.get("title") or f"Trial {actrn}"
         updated = t.get("updated_at") or t.get("last_checked") or "-"
-        clean_date = (updated.replace("T", " ")[:19] + " UTC") if updated != "-" else "-"
+        clean_date = "-"
+        if updated != "-":
+            try:
+                clean_dt_str = updated.replace("T", " ")[:19]
+                dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+                ist_dt = dt.astimezone(timezone(timedelta(hours=5, minutes=30)))
+                clean_date = f"{clean_dt_str} UTC <span style='color: #0284c7; font-size: 11px; font-weight: 600;'>({ist_dt.strftime('%I:%M:%S %p')} IST)</span>"
+            except Exception:
+                clean_date = updated.replace("T", " ")[:19] + " UTC"
+
         err = t.get("error_message") or ""
         err_html = f"<div style='color: #ef4444; font-size: 11px; margin-top: 4px;'>{err}</div>" if err else ""
 
         trials_table_rows += f"""
         <tr>
+          <td style="font-weight: 700; color: #64748b; text-align: center; width: 45px;">{idx}</td>
           <td><strong>{actrn}</strong>{err_html}</td>
           <td>{title}</td>
           <td><span class="badge {badge_cls}">{st}</span></td>
-          <td style="font-family: monospace; font-size: 12px; color: #64748b;">{clean_date}</td>
+          <td style="font-family: monospace; font-size: 12px; color: #334155;">{clean_date}</td>
         </tr>
         """
     if not trials_table_rows:
-        trials_table_rows = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 24px;">No trials synchronized yet. Pipeline will discover and ingest records on schedule.</td></tr>'
+        trials_table_rows = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 24px;">No trials synchronized yet. Pipeline will discover and ingest records on schedule.</td></tr>'
 
     # 4. Generate Interactive HTML Dashboard
     cron_pill_cls = "status-pill-cron" if cron_running else "status-pill-stopped"
@@ -644,10 +654,11 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     <table>
       <thead>
         <tr>
-          <th style="width: 220px;">Trial ACTRN</th>
+          <th style="width: 50px; text-align: center;">No.</th>
+          <th style="width: 200px;">Trial ACTRN</th>
           <th>Title / Study Description</th>
-          <th style="width: 140px;">Status</th>
-          <th style="width: 200px;">Last Activity (UTC)</th>
+          <th style="width: 130px;">Status</th>
+          <th style="width: 260px;">Last Activity (UTC / IST)</th>
         </tr>
       </thead>
       <tbody>
