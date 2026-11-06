@@ -1,0 +1,16 @@
+# Auto-detect text files and normalize to LF on commit
+* text=auto
+
+# Python source code
+*.py text eol=lf
+
+# Shell scripts and container configs MUST always remain LF for Docker
+*.sh text eol=lf
+crontab text eol=lf
+Dockerfile text eol=lf
+
+# Documentation & Configs
+*.md text
+*.json text
+*.yml text
+*.yaml text
