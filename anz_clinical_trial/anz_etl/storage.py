@@ -304,10 +304,6 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
         trials_table_rows = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 24px;">No trials synchronized yet. Pipeline will discover and ingest records on schedule.</td></tr>'
 
     # 4. Generate Interactive HTML Dashboard
-    s3_console_bronze = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_BRONZE_PREFIX}"
-    s3_console_silver = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_SILVER_PREFIX}"
-    s3_console_raw = f"https://s3.console.aws.amazon.com/s3/buckets/{config.S3_BUCKET_NAME}?prefix={config.S3_PREFIX}raw/"
-
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -384,20 +380,6 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
       margin-bottom: 24px;
     }}
     .section-box h3 {{ margin: 0 0 16px 0; font-size: 16px; }}
-    .nav-links {{ display: flex; flex-wrap: wrap; gap: 12px; }}
-    .nav-links a {{
-      display: inline-block;
-      color: #0284c7;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 13px;
-      padding: 8px 14px;
-      background: #f0f9ff;
-      border-radius: 6px;
-      border: 1px solid #bae6fd;
-      transition: background 0.15s;
-    }}
-    .nav-links a:hover {{ background: #e0f2fe; }}
     table {{
       width: 100%;
       border-collapse: collapse;
@@ -458,20 +440,6 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     <div class="card pending">
       <div class="label">Pending</div>
       <div class="val">{stats.get('pending', 0):,}</div>
-    </div>
-  </div>
-
-  <div class="section-box">
-    <h3>Storage Navigation & Registry Endpoints</h3>
-    <div class="nav-links">
-      <a href="{target_json_url}" target="_blank">View Status JSON Feed</a>
-      <a href="{s3_console_bronze}" target="_blank">AWS S3 Bronze Console</a>
-      <a href="{s3_console_silver}" target="_blank">AWS S3 Silver Console</a>
-      <a href="{s3_console_raw}" target="_blank">AWS S3 Raw API Console</a>
-      <a href="bronze/">Local Bronze Directory</a>
-      <a href="silver/">Local Silver Directory</a>
-      <a href="raw/">Local Raw Directory</a>
-      <a href="{config.ANZCTR_WS_URL}" target="_blank">ANZCTR Web Services</a>
     </div>
   </div>
 
