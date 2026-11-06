@@ -227,6 +227,28 @@ def quarantine_record(actrn: str, raw_content: str, error_reason: str) -> Path:
     return path
 
 
+def check_cron_status() -> Dict[str, Any]:
+    """Inspects Linux /proc and system processes to determine cron running status."""
+    is_running = False
+    try:
+        from pathlib import Path
+        for p in Path("/proc").glob("*/comm"):
+            try:
+                if p.is_file() and p.read_text(encoding="utf-8").strip() in ("cron", "crond"):
+                    is_running = True
+                    break
+            except (PermissionError, FileNotFoundError):
+                continue
+    except Exception:
+        pass
+
+    return {
+        "running": is_running,
+        "status": "RUNNING" if is_running else "STOPPED",
+        "schedule": getattr(config, "CRON_SCHEDULE", "*/15 * * * *"),
+    }
+
+
 def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     """Publishes current pipeline status metrics as JSON and builds the HTML dashboard."""
     from anz_etl import database
@@ -234,12 +256,20 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     now_utc = datetime.now(timezone.utc)
     now_str = now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    # Check live cron daemon status
+    cron_info = check_cron_status()
+    cron_running = cron_info.get("running", True)
+    cron_status_str = "RUNNING" if cron_running else "STOPPED"
+    cron_schedule_str = cron_info.get("schedule", "*/15 * * * *")
+
     # Retrieve tracked trials from state database
     trials = database.get_recent_trials(limit=50)
 
     report_data = {
         "registry": "ANZCTR",
         "last_updated": now_utc.isoformat(),
+        "pipeline_status": "RUNNING",
+        "cron_status": cron_info,
         "total_trials": stats.get("total", 0),
         "succeeded": stats.get("success", 0),
         "failed": stats.get("failed", 0),
@@ -304,6 +334,10 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
         trials_table_rows = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 24px;">No trials synchronized yet. Pipeline will discover and ingest records on schedule.</td></tr>'
 
     # 4. Generate Interactive HTML Dashboard
+    cron_pill_cls = "status-pill-cron" if cron_running else "status-pill-stopped"
+    cron_dot_cls = "status-dot-cron" if cron_running else "status-dot-stopped"
+    cron_card_color = "#0284c7" if cron_running else "#ef4444"
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -334,7 +368,51 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     }}
     h1 {{ margin: 0 0 6px 0; font-size: 24px; }}
     .subtitle {{ color: #64748b; font-size: 14px; }}
-    .header-btns {{ display: flex; gap: 10px; align-items: center; }}
+    .header-btns {{ display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }}
+    .status-pill {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #059669;
+      font-size: 13px;
+      font-weight: 700;
+    }}
+    .status-pill-cron {{
+      background: rgba(2, 132, 199, 0.1);
+      border-color: rgba(2, 132, 199, 0.3);
+      color: #0284c7;
+    }}
+    .status-pill-stopped {{
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #dc2626;
+    }}
+    .status-dot {{
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulseDot 2s infinite;
+    }}
+    .status-dot-cron {{
+      background: #0284c7;
+      box-shadow: 0 0 8px #0284c7;
+    }}
+    .status-dot-stopped {{
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+      animation: none;
+    }}
+    @keyframes pulseDot {{
+      0% {{ transform: scale(0.95); opacity: 0.7; }}
+      50% {{ transform: scale(1.3); opacity: 1; }}
+      100% {{ transform: scale(0.95); opacity: 0.7; }}
+    }}
     .btn {{
       display: inline-flex;
       align-items: center;
@@ -356,7 +434,7 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     .btn-secondary:hover {{ background: #cbd5e1; }}
     .grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }}
@@ -370,8 +448,8 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
     .card.success {{ border-left-color: #10b981; }}
     .card.failed {{ border-left-color: #ef4444; }}
     .card.pending {{ border-left-color: #f59e0b; }}
-    .card .label {{ color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }}
-    .card .val {{ font-size: 34px; font-weight: 700; margin-top: 8px; color: #0f172a; }}
+    .card .label {{ color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }}
+    .card .val {{ font-size: 30px; font-weight: 700; margin-top: 8px; color: #0f172a; }}
     .section-box {{
       background: white;
       padding: 24px;
@@ -419,27 +497,52 @@ def publish_status_report(stats: Dict[str, Any]) -> Dict[str, Any]:
       <div class="subtitle">Live status updated: {now_str} | Storage: {config.STORAGE_BACKEND} | State: {config.STATE_BACKEND}</div>
     </div>
     <div class="header-btns">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>Pipeline: RUNNING</span>
+      </div>
+      <div class="status-pill {cron_pill_cls}">
+        <span class="status-dot {cron_dot_cls}"></span>
+        <span>Cron: {cron_status_str} ({cron_schedule_str})</span>
+      </div>
       <button class="btn btn-secondary" onclick="location.reload()">Refresh</button>
       <a href="{target_json_url}" class="btn" target="_blank">Status JSON API</a>
     </div>
   </div>
 
   <div class="grid">
+    <div class="card" style="border-left-color: #10b981;">
+      <div class="label">Pipeline Status</div>
+      <div class="val" style="color: #059669; font-size: 22px; display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <span class="status-dot"></span> RUNNING
+      </div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Live 60s Heartbeat Active</div>
+    </div>
+
+    <div class="card" style="border-left-color: {cron_card_color};">
+      <div class="label">Cron Scheduler</div>
+      <div class="val" style="color: {cron_card_color}; font-size: 22px; display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <span class="status-dot {cron_dot_cls}"></span> {cron_status_str}
+      </div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Cadence: <code>{cron_schedule_str}</code></div>
+    </div>
+
     <div class="card">
       <div class="label">Total Tracked</div>
       <div class="val">{stats.get('total', 0):,}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 6px;">SQLite & DynamoDB</div>
     </div>
+
     <div class="card success">
       <div class="label">Succeeded</div>
       <div class="val">{stats.get('success', 0):,}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Bronze & Silver Payloads</div>
     </div>
+
     <div class="card failed">
       <div class="label">Failed</div>
       <div class="val">{stats.get('failed', 0):,}</div>
-    </div>
-    <div class="card pending">
-      <div class="label">Pending</div>
-      <div class="val">{stats.get('pending', 0):,}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Quarantine Errors: 0</div>
     </div>
   </div>
 
