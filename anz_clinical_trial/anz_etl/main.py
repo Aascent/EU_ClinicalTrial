@@ -100,8 +100,7 @@ def process_single_trial(actrn: str, raw_xml: Optional[str] = None) -> bool:
     save_bronze_record(actrn, raw_xml, is_xml=True)
 
     try:
-        raw_dict = {"actrn": actrn, "raw_content": raw_xml}
-        domains = parse_anzctr_trial(raw_dict, actrn)
+        domains = parse_anzctr_trial(raw_xml, actrn)
         save_silver_records(actrn, domains)
         update_trial_status(actrn, "SUCCESS")
         logger.info(f"Successfully processed {actrn}")

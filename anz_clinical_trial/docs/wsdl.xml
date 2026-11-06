@@ -1,0 +1,1861 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://anzctr.org.au/WebServices/AnzctrWebServices" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" targetNamespace="http://anzctr.org.au/WebServices/AnzctrWebServices" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://anzctr.org.au/WebServices/AnzctrWebServices">
+      <s:element name="AnzctrTrialSearch">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="searchText" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="gender" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthConditions" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="studyType" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCategory" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="interventionCode" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="paging" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="pageNumber" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="getActrnOnly" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrTrialSearchResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrTrialSearchResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrCtGovTrialSearch">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="searchText" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="gender" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthConditions" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="studyType" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCategory" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="interventionCode" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="paging" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="pageNumber" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="getActrnOnly" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrCtGovTrialSearchResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrCtGovTrialSearchResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrTrialDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ids" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrTrialDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrTrialDetailsResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrTrialDetailsV2">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ids" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="version" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrTrialDetailsV2Response">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrTrialDetailsV2Result" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetConditionCategories">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetConditionCategoriesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetConditionCategoriesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetConditionCodes">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCategory" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetConditionCodesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetConditionCodesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetPurposeOfStudies">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetPurposeOfStudiesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetPurposeOfStudiesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecruitmentStatuses">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecruitmentStatusesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRecruitmentStatusesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetPhases">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetPhasesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetPhasesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecruitmentSites">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecruitmentSitesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRecruitmentSitesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRecruitmentCountries">
+        <s:complexType />
+      </s:element>
+      <s:element name="GetRecruitmentCountriesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRecruitmentCountriesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetAgeGroups">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetAgeGroupsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetAgeGroupsResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetInterventionCodes">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetInterventionCodesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetInterventionCodesResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetHealthyVolunteerParticipation">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="getCount" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetHealthyVolunteerParticipationResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetHealthyVolunteerParticipationResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrClinTrialReferSearch">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="searchText" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="gender" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthConditions" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="studyType" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCategory" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="interventionCode" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="paging" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="pageNumber" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="getActrnOnly" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrClinTrialReferSearchResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrClinTrialReferSearchResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrCtGovClinTrialReferSearch">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="searchText" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purposeOfStudy" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="gender" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthyVolunteers" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="healthConditions" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentSites" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentCountries" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="studyType" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCategory" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="conditionCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="interventionCode" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="paging" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="pageNumber" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="getActrnOnly" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrCtGovClinTrialReferSearchResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrCtGovClinTrialReferSearchResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrClinTrialReferDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ids" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AnzctrClinTrialReferDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AnzctrClinTrialReferDetailsResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ActSearchResults">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="keyword" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="cancerType" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="cancerStage" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="purpose" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="phase" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="intervention" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="fromDate" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="toDate" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="sponsor" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="fundingSource" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ageGroup" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="gender" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="location" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ethicsApproval" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="recruitmentStatus" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="paging" type="s:int" />
+            <s:element minOccurs="1" maxOccurs="1" name="pageNumber" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ActSearchResultsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ActSearchResultsResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ActMoreInfo">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="trialId" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="ds" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ActMoreInfoResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ActMoreInfoResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="string" nillable="true" type="s:string" />
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="AnzctrTrialSearchSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialSearch" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialSearchSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialSearchResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrCtGovTrialSearch" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrCtGovTrialSearchResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialDetails" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2SoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialDetailsV2" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2SoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrTrialDetailsV2Response" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetConditionCategories" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetConditionCategoriesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetConditionCodes" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetConditionCodesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetPurposeOfStudies" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetPurposeOfStudiesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentStatuses" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentStatusesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetPhases" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetPhasesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentSites" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentSitesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentCountriesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentCountries" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentCountriesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRecruitmentCountriesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetAgeGroups" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetAgeGroupsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesSoapIn">
+    <wsdl:part name="parameters" element="tns:GetInterventionCodes" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesSoapOut">
+    <wsdl:part name="parameters" element="tns:GetInterventionCodesResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationSoapIn">
+    <wsdl:part name="parameters" element="tns:GetHealthyVolunteerParticipation" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationSoapOut">
+    <wsdl:part name="parameters" element="tns:GetHealthyVolunteerParticipationResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrClinTrialReferSearch" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrClinTrialReferSearchResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrCtGovClinTrialReferSearch" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrCtGovClinTrialReferSearchResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:AnzctrClinTrialReferDetails" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:AnzctrClinTrialReferDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsSoapIn">
+    <wsdl:part name="parameters" element="tns:ActSearchResults" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsSoapOut">
+    <wsdl:part name="parameters" element="tns:ActSearchResultsResponse" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoSoapIn">
+    <wsdl:part name="parameters" element="tns:ActMoreInfo" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoSoapOut">
+    <wsdl:part name="parameters" element="tns:ActMoreInfoResponse" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialSearchHttpGetIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialSearchHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchHttpGetIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsHttpGetIn">
+    <wsdl:part name="ids" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2HttpGetIn">
+    <wsdl:part name="ids" type="s:string" />
+    <wsdl:part name="version" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2HttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentCountriesHttpGetIn" />
+  <wsdl:message name="GetRecruitmentCountriesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationHttpGetIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchHttpGetIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchHttpGetIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsHttpGetIn">
+    <wsdl:part name="ids" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsHttpGetIn">
+    <wsdl:part name="keyword" type="s:string" />
+    <wsdl:part name="cancerType" type="s:string" />
+    <wsdl:part name="cancerStage" type="s:string" />
+    <wsdl:part name="purpose" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="intervention" type="s:string" />
+    <wsdl:part name="fromDate" type="s:string" />
+    <wsdl:part name="toDate" type="s:string" />
+    <wsdl:part name="sponsor" type="s:string" />
+    <wsdl:part name="fundingSource" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="location" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoHttpGetIn">
+    <wsdl:part name="trialId" type="s:string" />
+    <wsdl:part name="ds" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialSearchHttpPostIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialSearchHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchHttpPostIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovTrialSearchHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsHttpPostIn">
+    <wsdl:part name="ids" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2HttpPostIn">
+    <wsdl:part name="ids" type="s:string" />
+    <wsdl:part name="version" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrTrialDetailsV2HttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCategoriesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetConditionCodesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPurposeOfStudiesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentStatusesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetPhasesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentSitesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetRecruitmentCountriesHttpPostIn" />
+  <wsdl:message name="GetRecruitmentCountriesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetAgeGroupsHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetInterventionCodesHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationHttpPostIn">
+    <wsdl:part name="getCount" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetHealthyVolunteerParticipationHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchHttpPostIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferSearchHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchHttpPostIn">
+    <wsdl:part name="searchText" type="s:string" />
+    <wsdl:part name="purposeOfStudy" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="healthyVolunteers" type="s:string" />
+    <wsdl:part name="healthConditions" type="s:string" />
+    <wsdl:part name="recruitmentSites" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="recruitmentCountries" type="s:string" />
+    <wsdl:part name="studyType" type="s:string" />
+    <wsdl:part name="conditionCategory" type="s:string" />
+    <wsdl:part name="conditionCode" type="s:string" />
+    <wsdl:part name="interventionCode" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+    <wsdl:part name="getActrnOnly" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrCtGovClinTrialReferSearchHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsHttpPostIn">
+    <wsdl:part name="ids" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AnzctrClinTrialReferDetailsHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsHttpPostIn">
+    <wsdl:part name="keyword" type="s:string" />
+    <wsdl:part name="cancerType" type="s:string" />
+    <wsdl:part name="cancerStage" type="s:string" />
+    <wsdl:part name="purpose" type="s:string" />
+    <wsdl:part name="phase" type="s:string" />
+    <wsdl:part name="intervention" type="s:string" />
+    <wsdl:part name="fromDate" type="s:string" />
+    <wsdl:part name="toDate" type="s:string" />
+    <wsdl:part name="sponsor" type="s:string" />
+    <wsdl:part name="fundingSource" type="s:string" />
+    <wsdl:part name="ageGroup" type="s:string" />
+    <wsdl:part name="gender" type="s:string" />
+    <wsdl:part name="location" type="s:string" />
+    <wsdl:part name="ethicsApproval" type="s:string" />
+    <wsdl:part name="recruitmentStatus" type="s:string" />
+    <wsdl:part name="paging" type="s:string" />
+    <wsdl:part name="pageNumber" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="ActSearchResultsHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoHttpPostIn">
+    <wsdl:part name="trialId" type="s:string" />
+    <wsdl:part name="ds" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="ActMoreInfoHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:portType name="AnzctrWebservicesSoap">
+    <wsdl:operation name="AnzctrTrialSearch">
+      <wsdl:input message="tns:AnzctrTrialSearchSoapIn" />
+      <wsdl:output message="tns:AnzctrTrialSearchSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <wsdl:input message="tns:AnzctrCtGovTrialSearchSoapIn" />
+      <wsdl:output message="tns:AnzctrCtGovTrialSearchSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <wsdl:input message="tns:AnzctrTrialDetailsSoapIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <wsdl:input message="tns:AnzctrTrialDetailsV2SoapIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsV2SoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <wsdl:input message="tns:GetConditionCategoriesSoapIn" />
+      <wsdl:output message="tns:GetConditionCategoriesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <wsdl:input message="tns:GetConditionCodesSoapIn" />
+      <wsdl:output message="tns:GetConditionCodesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <wsdl:input message="tns:GetPurposeOfStudiesSoapIn" />
+      <wsdl:output message="tns:GetPurposeOfStudiesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <wsdl:input message="tns:GetRecruitmentStatusesSoapIn" />
+      <wsdl:output message="tns:GetRecruitmentStatusesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <wsdl:input message="tns:GetPhasesSoapIn" />
+      <wsdl:output message="tns:GetPhasesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <wsdl:input message="tns:GetRecruitmentSitesSoapIn" />
+      <wsdl:output message="tns:GetRecruitmentSitesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <wsdl:input message="tns:GetRecruitmentCountriesSoapIn" />
+      <wsdl:output message="tns:GetRecruitmentCountriesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <wsdl:input message="tns:GetAgeGroupsSoapIn" />
+      <wsdl:output message="tns:GetAgeGroupsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <wsdl:input message="tns:GetInterventionCodesSoapIn" />
+      <wsdl:output message="tns:GetInterventionCodesSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <wsdl:input message="tns:GetHealthyVolunteerParticipationSoapIn" />
+      <wsdl:output message="tns:GetHealthyVolunteerParticipationSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrClinTrialReferSearchSoapIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferSearchSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrCtGovClinTrialReferSearchSoapIn" />
+      <wsdl:output message="tns:AnzctrCtGovClinTrialReferSearchSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <wsdl:input message="tns:AnzctrClinTrialReferDetailsSoapIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <wsdl:input message="tns:ActSearchResultsSoapIn" />
+      <wsdl:output message="tns:ActSearchResultsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <wsdl:input message="tns:ActMoreInfoSoapIn" />
+      <wsdl:output message="tns:ActMoreInfoSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="AnzctrWebservicesHttpGet">
+    <wsdl:operation name="AnzctrTrialSearch">
+      <wsdl:input message="tns:AnzctrTrialSearchHttpGetIn" />
+      <wsdl:output message="tns:AnzctrTrialSearchHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <wsdl:input message="tns:AnzctrCtGovTrialSearchHttpGetIn" />
+      <wsdl:output message="tns:AnzctrCtGovTrialSearchHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <wsdl:input message="tns:AnzctrTrialDetailsHttpGetIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <wsdl:input message="tns:AnzctrTrialDetailsV2HttpGetIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsV2HttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <wsdl:input message="tns:GetConditionCategoriesHttpGetIn" />
+      <wsdl:output message="tns:GetConditionCategoriesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <wsdl:input message="tns:GetConditionCodesHttpGetIn" />
+      <wsdl:output message="tns:GetConditionCodesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <wsdl:input message="tns:GetPurposeOfStudiesHttpGetIn" />
+      <wsdl:output message="tns:GetPurposeOfStudiesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <wsdl:input message="tns:GetRecruitmentStatusesHttpGetIn" />
+      <wsdl:output message="tns:GetRecruitmentStatusesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <wsdl:input message="tns:GetPhasesHttpGetIn" />
+      <wsdl:output message="tns:GetPhasesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <wsdl:input message="tns:GetRecruitmentSitesHttpGetIn" />
+      <wsdl:output message="tns:GetRecruitmentSitesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <wsdl:input message="tns:GetRecruitmentCountriesHttpGetIn" />
+      <wsdl:output message="tns:GetRecruitmentCountriesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <wsdl:input message="tns:GetAgeGroupsHttpGetIn" />
+      <wsdl:output message="tns:GetAgeGroupsHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <wsdl:input message="tns:GetInterventionCodesHttpGetIn" />
+      <wsdl:output message="tns:GetInterventionCodesHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <wsdl:input message="tns:GetHealthyVolunteerParticipationHttpGetIn" />
+      <wsdl:output message="tns:GetHealthyVolunteerParticipationHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrClinTrialReferSearchHttpGetIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferSearchHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrCtGovClinTrialReferSearchHttpGetIn" />
+      <wsdl:output message="tns:AnzctrCtGovClinTrialReferSearchHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <wsdl:input message="tns:AnzctrClinTrialReferDetailsHttpGetIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferDetailsHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <wsdl:input message="tns:ActSearchResultsHttpGetIn" />
+      <wsdl:output message="tns:ActSearchResultsHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <wsdl:input message="tns:ActMoreInfoHttpGetIn" />
+      <wsdl:output message="tns:ActMoreInfoHttpGetOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="AnzctrWebservicesHttpPost">
+    <wsdl:operation name="AnzctrTrialSearch">
+      <wsdl:input message="tns:AnzctrTrialSearchHttpPostIn" />
+      <wsdl:output message="tns:AnzctrTrialSearchHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <wsdl:input message="tns:AnzctrCtGovTrialSearchHttpPostIn" />
+      <wsdl:output message="tns:AnzctrCtGovTrialSearchHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <wsdl:input message="tns:AnzctrTrialDetailsHttpPostIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <wsdl:input message="tns:AnzctrTrialDetailsV2HttpPostIn" />
+      <wsdl:output message="tns:AnzctrTrialDetailsV2HttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <wsdl:input message="tns:GetConditionCategoriesHttpPostIn" />
+      <wsdl:output message="tns:GetConditionCategoriesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <wsdl:input message="tns:GetConditionCodesHttpPostIn" />
+      <wsdl:output message="tns:GetConditionCodesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <wsdl:input message="tns:GetPurposeOfStudiesHttpPostIn" />
+      <wsdl:output message="tns:GetPurposeOfStudiesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <wsdl:input message="tns:GetRecruitmentStatusesHttpPostIn" />
+      <wsdl:output message="tns:GetRecruitmentStatusesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <wsdl:input message="tns:GetPhasesHttpPostIn" />
+      <wsdl:output message="tns:GetPhasesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <wsdl:input message="tns:GetRecruitmentSitesHttpPostIn" />
+      <wsdl:output message="tns:GetRecruitmentSitesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <wsdl:input message="tns:GetRecruitmentCountriesHttpPostIn" />
+      <wsdl:output message="tns:GetRecruitmentCountriesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <wsdl:input message="tns:GetAgeGroupsHttpPostIn" />
+      <wsdl:output message="tns:GetAgeGroupsHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <wsdl:input message="tns:GetInterventionCodesHttpPostIn" />
+      <wsdl:output message="tns:GetInterventionCodesHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <wsdl:input message="tns:GetHealthyVolunteerParticipationHttpPostIn" />
+      <wsdl:output message="tns:GetHealthyVolunteerParticipationHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrClinTrialReferSearchHttpPostIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferSearchHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <wsdl:input message="tns:AnzctrCtGovClinTrialReferSearchHttpPostIn" />
+      <wsdl:output message="tns:AnzctrCtGovClinTrialReferSearchHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <wsdl:input message="tns:AnzctrClinTrialReferDetailsHttpPostIn" />
+      <wsdl:output message="tns:AnzctrClinTrialReferDetailsHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <wsdl:input message="tns:ActSearchResultsHttpPostIn" />
+      <wsdl:output message="tns:ActSearchResultsHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <wsdl:input message="tns:ActMoreInfoHttpPostIn" />
+      <wsdl:output message="tns:ActMoreInfoHttpPostOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="AnzctrWebservicesSoap" type="tns:AnzctrWebservicesSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="AnzctrTrialSearch">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialSearch" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrCtGovTrialSearch" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialDetailsV2" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetConditionCategories" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetConditionCodes" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetPurposeOfStudies" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentStatuses" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetPhases" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentSites" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentCountries" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetAgeGroups" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetInterventionCodes" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetHealthyVolunteerParticipation" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrClinTrialReferSearch" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrCtGovClinTrialReferSearch" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrClinTrialReferDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/ActSearchResults" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <soap:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/ActMoreInfo" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="AnzctrWebservicesSoap12" type="tns:AnzctrWebservicesSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="AnzctrTrialSearch">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialSearch" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrCtGovTrialSearch" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrTrialDetailsV2" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetConditionCategories" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetConditionCodes" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetPurposeOfStudies" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentStatuses" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetPhases" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentSites" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetRecruitmentCountries" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetAgeGroups" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetInterventionCodes" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/GetHealthyVolunteerParticipation" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrClinTrialReferSearch" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrCtGovClinTrialReferSearch" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/AnzctrClinTrialReferDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/ActSearchResults" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <soap12:operation soapAction="http://anzctr.org.au/WebServices/AnzctrWebServices/ActMoreInfo" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="AnzctrWebservicesHttpGet" type="tns:AnzctrWebservicesHttpGet">
+    <http:binding verb="GET" />
+    <wsdl:operation name="AnzctrTrialSearch">
+      <http:operation location="/AnzctrTrialSearch" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <http:operation location="/AnzctrCtGovTrialSearch" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <http:operation location="/AnzctrTrialDetails" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <http:operation location="/AnzctrTrialDetailsV2" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <http:operation location="/GetConditionCategories" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <http:operation location="/GetConditionCodes" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <http:operation location="/GetPurposeOfStudies" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <http:operation location="/GetRecruitmentStatuses" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <http:operation location="/GetPhases" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <http:operation location="/GetRecruitmentSites" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <http:operation location="/GetRecruitmentCountries" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <http:operation location="/GetAgeGroups" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <http:operation location="/GetInterventionCodes" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <http:operation location="/GetHealthyVolunteerParticipation" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <http:operation location="/AnzctrClinTrialReferSearch" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <http:operation location="/AnzctrCtGovClinTrialReferSearch" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <http:operation location="/AnzctrClinTrialReferDetails" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <http:operation location="/ActSearchResults" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <http:operation location="/ActMoreInfo" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="AnzctrWebservicesHttpPost" type="tns:AnzctrWebservicesHttpPost">
+    <http:binding verb="POST" />
+    <wsdl:operation name="AnzctrTrialSearch">
+      <http:operation location="/AnzctrTrialSearch" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovTrialSearch">
+      <http:operation location="/AnzctrCtGovTrialSearch" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetails">
+      <http:operation location="/AnzctrTrialDetails" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrTrialDetailsV2">
+      <http:operation location="/AnzctrTrialDetailsV2" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCategories">
+      <http:operation location="/GetConditionCategories" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetConditionCodes">
+      <http:operation location="/GetConditionCodes" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPurposeOfStudies">
+      <http:operation location="/GetPurposeOfStudies" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentStatuses">
+      <http:operation location="/GetRecruitmentStatuses" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetPhases">
+      <http:operation location="/GetPhases" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentSites">
+      <http:operation location="/GetRecruitmentSites" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRecruitmentCountries">
+      <http:operation location="/GetRecruitmentCountries" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetAgeGroups">
+      <http:operation location="/GetAgeGroups" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetInterventionCodes">
+      <http:operation location="/GetInterventionCodes" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetHealthyVolunteerParticipation">
+      <http:operation location="/GetHealthyVolunteerParticipation" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferSearch">
+      <http:operation location="/AnzctrClinTrialReferSearch" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrCtGovClinTrialReferSearch">
+      <http:operation location="/AnzctrCtGovClinTrialReferSearch" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AnzctrClinTrialReferDetails">
+      <http:operation location="/AnzctrClinTrialReferDetails" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActSearchResults">
+      <http:operation location="/ActSearchResults" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ActMoreInfo">
+      <http:operation location="/ActMoreInfo" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="AnzctrWebservices">
+    <wsdl:port name="AnzctrWebservicesSoap" binding="tns:AnzctrWebservicesSoap">
+      <soap:address location="http://api.anzctr.org.au/WebServices/AnzctrWebservices.asmx" />
+    </wsdl:port>
+    <wsdl:port name="AnzctrWebservicesSoap12" binding="tns:AnzctrWebservicesSoap12">
+      <soap12:address location="http://api.anzctr.org.au/WebServices/AnzctrWebservices.asmx" />
+    </wsdl:port>
+    <wsdl:port name="AnzctrWebservicesHttpGet" binding="tns:AnzctrWebservicesHttpGet">
+      <http:address location="http://api.anzctr.org.au/WebServices/AnzctrWebservices.asmx" />
+    </wsdl:port>
+    <wsdl:port name="AnzctrWebservicesHttpPost" binding="tns:AnzctrWebservicesHttpPost">
+      <http:address location="http://api.anzctr.org.au/WebServices/AnzctrWebservices.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
