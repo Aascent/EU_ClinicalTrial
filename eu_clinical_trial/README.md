@@ -76,6 +76,7 @@ Under the **European Union Clinical Trials Regulation (Regulation (EU) No 536/20
 CTIS provides a unified public portal (`https://euclinicaltrials.eu/ctis-public-api`) exposing trial metadata, scientific dossiers, sponsor information, clinical study sites, and authorized regulatory documents.
 
 ### What This Pipeline Delivers
+
 1. **Full Historical Ingestion:** Ingests the complete global CTIS catalog (~12,500+ active trials) without data loss, overcoming API window limitations.
 2. **Autonomous Incremental Synchronization:** Continuously tracks newly published trials (every 6 hours) and amended/updated trial dossiers (daily at 02:00 UTC).
 3. **Multi-Tier Storage:** Simultaneously writes to local disk and/or Amazon S3, organized into Bronze (raw API response) and Silver (6 structured domain JSON entities).
@@ -217,6 +218,7 @@ sequenceDiagram
 ### 3.2 Detailed Step-by-Step Flow
 
 #### Phase 1: Pipeline Initialization & Self-Healing
+
 1. **Config & Environment Loading (`ctis_etl/config.py`):**
    * Reads settings from `.env` or system environment variables.
    * Auto-resolves runtime directories: `./data/bronze`, `./data/silver`, `./data/history`, `./quarantine`, `./logs`.
@@ -231,11 +233,13 @@ sequenceDiagram
    * `reset_stale_pipeline_runs(timeout_hours=4)` marks orphaned runs as `INTERRUPTED`.
 
 #### Phase 2: Discovery & Staging
+
 1. **Search Endpoint Invocation (`ctis_etl/api_client.py`):**
    * Issues `POST /ctis-public-api/search` with mandatory payload envelope:
      ```json
      {"pagination": {"page": 1, "size": 100}, "sort": {"property": "decisionDate", "direction": "DESC"}, "searchCriteria": {}}
      ```
+
 2. **Date Sanitization & Lookback Cutoff:**
    * Cleans country code prefixes using regex: `re.sub(r"^[A-Za-z]{2,3}:\s*", "", raw_date)`.
    * Formats into a standard UTC timestamp.
@@ -247,6 +251,7 @@ sequenceDiagram
      * **If found and dates match:** Marked as `SKIPPED` (up-to-date; no network retrieve request is spent).
 
 #### Phase 3: Detail Retrieval & Network Safety Layer
+
 1. **Task Dispatch (`ctis_etl/main.py`):**
    * Enqueues pending trial numbers to a `ThreadPoolExecutor` capped at `MAX_WORKERS` (default: 5).
 2. **Atomic In-Flight Lock:**
@@ -259,19 +264,22 @@ sequenceDiagram
    * Validates that response is non-empty and contains `ctNumber`. If CTIS returns `200 OK` with `{}` (missing trial), raises `CTISNotFoundError`.
 
 #### Phase 4: Defensive Parsing & Silver Layer Normalization
+
 1. **Domain Splitting (`ctis_etl/parser.py`):**
    * Deconstructs the monolithic JSON response into 6 domain JSON payloads using defensive wrappers (`_safe_dict`, `_safe_list`) to ensure missing fields or unexpected nulls never cause exceptions.
    * Preserves `authorizedPartI` entirely within `full_trial_information.json` to guarantee zero scientific schema loss.
 
 #### Phase 5: Regulatory Documents & PDF Resolution
+
 1. **Permanent URL Enrichment:**
    * CTIS regulatory document download links expire after 300 seconds.
-   * The pipeline rewrites document URLs in `trial_documents.json` to the permanent public API endpoint:
-     `https://euclinicaltrials.eu/ctis-public-api/documents/{ctNumber}/{uuid}/download`
+   * The pipeline rewrites document URLs in `trial_documents.json` to the permanent public API endpoint: `https://euclinicaltrials.eu/ctis-public-api/documents/{ctNumber}/{uuid}/download`
+
 2. **Binary PDF Download (`DOWNLOAD_DOCUMENTS=true`):**
    * When enabled, invokes the endpoint to resolve a dynamic pre-signed link and downloads the binary PDF directly to `./data/silver/{ctNumber}/documents/{clean_title}.pdf` and/or S3.
 
 #### Phase 6: Automated Version Archiving (History Tier)
+
 1. **Pre-Update Snapshot (`storage.archive_existing_trial`):**
    * If a trial already exists in storage and is receiving an update, existing Bronze and Silver files are snapshotted into:
      * Local: `data/history/{ctNumber}/{YYYYMMDDTHHMMSSZ}/`
@@ -279,6 +287,7 @@ sequenceDiagram
    * Adds `previous_version_archived_at` and `is_updated: true` metadata tags to `meta_data.json`.
 
 #### Phase 7: Storage Persistence & Atomic Verification
+
 1. **Atomic Local Disk Write:**
    * Writes each JSON document to a temporary file (`.tmp`) and executes an atomic POSIX rename to prevent partial writes during crashes.
 2. **Amazon S3 Upload:**
@@ -288,6 +297,7 @@ sequenceDiagram
    * Confirms all 7 files (1 Bronze `raw.json` + 6 Silver domain files) exist and have size `> 0`. If any file fails, the entire transaction is rolled back and quarantined.
 
 #### Phase 8: State Finalization & Quarantine Handling
+
 1. **Success Path:**
    * Calls `database.mark_success(ct_number, publish_date)`, updating SQLite and DynamoDB with status `SUCCESS` and recording execution timestamps.
 2. **Failure Path:**
@@ -295,6 +305,7 @@ sequenceDiagram
    * Calls `database.mark_failure(ct_number, error_msg)`, incrementing the retry counter.
 
 #### Phase 9: Reporting & Live Dashboard Publishing
+
 1. **Audit Metrics Aggregation:**
    * Calculates overall trial metrics, runs by type, daily activity, and success rates from `pipeline_runs`.
 2. **Dashboard Rendering (`storage.publish_pipeline_status_report`):**
@@ -407,13 +418,16 @@ Attempt 3: 2^3 + uniform(0.1, 1.0) = ~8.10s - 9.00s
 ### 5.2 The 10,000 Record Pagination Cap & Bi-Directional Dual-Pass Solution
 
 #### The Problem:
+
 The CTIS Search API (`POST /ctis-public-api/search`) is backed by an Elasticsearch/OpenSearch cluster configured with `index.max_result_window = 10000`. With 100 trials per page:
+
 * Pages 1 through 100 return normal trial data (records 1 to 10,000).
 * Page 101+ returns an empty array `data: []`.
 
 Because the active CTIS registry contains over 12,500 trials, a traditional single-direction pagination loop misses approximately 2,500 trials.
 
 #### Our Engineered Solution:
+
 In `run_full()` (`ctis_etl/main.py`), the pipeline implements an automated **Bi-Directional Dual-Pass Pagination Algorithm**:
 
 ```
@@ -455,6 +469,7 @@ https://ctis-publication-engine-doc-storage-prod.s3.eu-central-1.amazonaws.com/{
 These pre-signed URLs **expire after 300 seconds (5 minutes)**. If static files or database rows store this pre-signed URL directly, client access fails with `403 AccessDenied` shortly after ingestion.
 
 #### Our Engineered Solution:
+
 1. **Permanent Endpoint Storage in `trial_documents.json`:**
    * Instead of saving the short-lived S3 pre-signed query string, the pipeline rewrites the `url` attribute to the stable CTIS public API endpoint:
      ```json
@@ -466,6 +481,7 @@ These pre-signed URLs **expire after 300 seconds (5 minutes)**. If static files 
        "url": "https://euclinicaltrials.eu/ctis-public-api/documents/2026-527084-15-00/1b258c08-4171-46bd-8946-b6aeaf1e1eb0/download"
      }
      ```
+
 2. **On-Demand Dynamic Resolution:**
    * Clients or applications can call this permanent endpoint at any time to receive a fresh, valid 5-minute pre-signed link on the fly.
 3. **Local PDF Archiving:**
@@ -482,6 +498,7 @@ When a trial number does not exist, has been redacted, or was withdrawn before p
   if not data or not data.get("ctNumber"):
       raise CTISNotFoundError(f"Trial {ct_number} was not found or returned empty dossier.")
   ```
+
 * **Handling:** Missing records are caught, routed to `./quarantine/`, and logged with detailed error diagnostics.
 
 ---
@@ -491,11 +508,13 @@ When a trial number does not exist, has been redacted, or was withdrawn before p
 Under multi-process Docker or cron execution, background historical crawler tasks and scheduled sync tasks may write to `tracker.db` at the same time. Default SQLite rollback journals trigger `database is locked` errors under concurrent writes.
 
 #### Our Engineered Solution:
+
 On database initialization (`database.init_sqlite_db`), the pipeline executes:
 ```sql
 PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=30000;
 ```
+
 * **WAL Mode:** Separates readers and writers, allowing concurrent reads while write transactions are appended to the WAL log without blocking.
 * **30-Second Busy Timeout:** If a write transaction is currently committing, concurrent processes wait up to 30,000ms instead of immediately failing.
 
@@ -619,6 +638,7 @@ Contains Member States Concerned (MSCs), recruitment clinical sites, Principal I
 ### 6.3 History Tier (Automated Version Archiving)
 
 Whenever an amendment or update to an existing trial is detected, the pipeline preserves the old version in `history/{ctNumber}/{archive_timestamp}/` before writing the new version:
+
 * **Local:** `data/history/{ctNumber}/{timestamp}/bronze/` and `silver/`
 * **AWS S3:** `s3://{bucket}/{prefix}history/{ctNumber}/{timestamp}/` using server-side S3 object copies.
 * **Audit Trail:** Updated files in `meta_data.json` receive `is_updated: true` and the `previous_version_archived_at` timestamp.
@@ -628,6 +648,7 @@ Whenever an amendment or update to an existing trial is detected, the pipeline p
 ### 6.4 Quarantine Tier (Dead-Letter Handling)
 
 Any response that fails JSON schema decoding or encounters unexpected API errors is automatically moved to `./quarantine/`:
+
 * Payload: `./quarantine/{ctNumber}_{timestamp}.json`
 * Stack Trace: `./quarantine/{ctNumber}_{timestamp}.error.log`
 
@@ -733,6 +754,7 @@ When new Docker containers spin up with an empty local SQLite file, `database.re
 ## 8. Installation & Environment Configuration
 
 ### 8.1 Prerequisites
+
 * Python 3.10 or higher
 * Docker & Docker Compose (optional, for containerized deployments)
 * AWS Account with S3 and DynamoDB permissions (if using AWS backends)
@@ -945,6 +967,7 @@ To customize the schedule, update `CRON_SCHEDULE` in `docker-compose.yml` (e.g. 
 ### 10.3 Web Dashboard & Monitoring HTTP Server
 
 The container serves an interactive web dashboard on port `8080`:
+
 * **URL:** `http://<host-ip>:8080/`
 * **JSON Metrics API:** `http://<host-ip>:8080/status_report.json`
 * Displays tracked trial totals, success/failure counts, daily ingestion charts, and recent pipeline runs.
@@ -1007,6 +1030,7 @@ make view-db
 ```
 
 Prints formatted tables for:
+
 1. **Tracked Trials:** Trial number, current status, retry count, last publish date, and last update timestamp.
 2. **Recent Pipeline Runs:** Run ID, run type, duration, discovery count, processed count, success count, and status.
 3. **Public S3 Dashboard Links:** Active pre-signed browser URLs for remote monitoring.
@@ -1024,6 +1048,7 @@ make check
 ```
 
 **Diagnostic Coverage:**
+
 1. **CTIS Public API Connectivity:** Tests `POST /search` and sample `GET /retrieve/{ctNumber}`.
 2. **Local Storage Write Access:** Validates permissions in `./data`, `./quarantine`, and `./logs`.
 3. **SQLite Database Health:** Validates schema creation and WAL journal mode in `tracker.db`.
@@ -1045,6 +1070,7 @@ make status
 ```
 
 **Output Includes:**
+
 * Total trials tracked and counts categorized by status (`SUCCESS`, `PENDING`, `FAILED`).
 * Fresh 365-day S3 pre-signed browser URL for the interactive HTML dashboard.
 * Fresh 365-day S3 pre-signed browser URL for the raw JSON status metrics.
@@ -1094,12 +1120,14 @@ $$\text{Estimated Runtime} = \frac{12,572 \text{ trials}}{2.2 \text{ trials/sec}
 ### 12.4 Cloud Storage Footprint & Monthly AWS Cost Breakdown
 
 #### Storage Sizing
+
 * **Bronze Layer (`raw.json`):** ~120 KB – 250 KB per trial.
 * **Silver Layer (6 Domain JSONs):** ~30 KB – 60 KB total per trial.
 * **Total Storage per Trial:** ~150 KB – 310 KB across 7 JSON files.
 * **Full Registry Archive (~12,572 Trials):** **~2.3 GB – 3.3 GB total footprint**.
 
 #### Estimated Monthly AWS Costs (US East, N. Virginia)
+
 * **Amazon S3 Storage:** 3.3 GB Standard Storage @ $0.023/GB/month = **<$0.08 / month**.
 * **Amazon S3 PUT Operations:** ~88,000 one-time PUT calls @ $0.005 per 1,000 = **~$0.44 one-time backfill cost**.
 * **Amazon DynamoDB (On-Demand):** ~12,572 Write Request Units = **<$0.02 one-time backfill cost**. Storage (~10 MB) falls well within the AWS Always-Free Tier (25 GB free).
@@ -1109,19 +1137,24 @@ $$\text{Estimated Runtime} = \frac{12,572 \text{ trials}}{2.2 \text{ trials/sec}
 
 ## 13. Troubleshooting & Operations FAQ
 
-#### Q1: What happens if the container or process restarts midway through a historical backfill?
+### Q1: What happens if the container or process restarts midway through a historical backfill?
+
 **Answer:** The pipeline is completely idempotent and state-tracked. On restart, `database.reset_stale_processing()` recovers any interrupted trials, while `database.stage_trial()` verifies which trials have already been ingested in SQLite and DynamoDB. Extraction automatically resumes from the last uncommitted trial without re-downloading previously processed records.
 
-#### Q2: How do I know if the pipeline is currently hitting rate limits?
+### Q2: How do I know if the pipeline is currently hitting rate limits?
+
 **Answer:** Check the application logs (`./logs/ctis_etl.log` or `docker compose logs -f`). If a `429 Too Many Requests` is returned by CTIS, a warning is logged:
 `[WARNING] HTTP 429 error for ... Retrying in 2.45s (Attempt 1/3)...`
 The worker automatically backs off, sleeps with jitter, and retries. If 429s persist, decrease `MAX_WORKERS` to `3` and increase `REQUEST_DELAY_SECONDS` to `0.3` in `.env`.
 
-#### Q3: How do client applications access PDF documents after the 5-minute pre-signed S3 links expire?
+### Q3: How do client applications access PDF documents after the 5-minute pre-signed S3 links expire?
+
 **Answer:** `trial_documents.json` stores the permanent public API endpoint (`https://euclinicaltrials.eu/ctis-public-api/documents/{ctNumber}/{uuid}/download`). Applications can issue a `GET` request to this endpoint to receive a fresh 5-minute link on demand, or use `download_trial_docs.py` to archive binary PDFs locally.
 
-#### Q4: Why are some trials found in legacy EudraCT not appearing in CTIS?
+### Q4: Why are some trials found in legacy EudraCT not appearing in CTIS?
+
 **Answer:** EudraCT covers historical trials authorized under the old Clinical Trials Directive (EC 2001/20) prior to January 31, 2022. CTIS is the modern database established under the Clinical Trials Regulation (EU 536/2014). Legacy EudraCT trials that did not transition to CTR are maintained in a separate system not exposed by the CTIS public API.
 
-#### Q5: How do I view failed trials and re-run them?
+### Q5: How do I view failed trials and re-run them?
+
 **Answer:** Run `python view_db.py` to see trials with status `FAILED`. Run `make retry` or `python -m ctis_etl.main --mode retry-failed` to reset their status to `PENDING` and re-attempt extraction. Detailed failure diagnostics and stack traces are preserved in `./quarantine/`.
