@@ -104,7 +104,7 @@ DASHBOARD_EXPIRES_SECONDS = DASHBOARD_EXPIRES_DAYS * 86400
 # Production Resilience & Network Constants
 CONNECT_TIMEOUT = float(os.getenv("CONNECT_TIMEOUT", "10.0"))
 READ_TIMEOUT = float(os.getenv("READ_TIMEOUT", "30.0"))
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))
 REQUEST_DELAY_SECONDS = float(os.getenv("REQUEST_DELAY_SECONDS", "0.1"))
 
 # Log Rotation & Disk Safety

@@ -7,6 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: eu_ctis_etl_pipeline
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:

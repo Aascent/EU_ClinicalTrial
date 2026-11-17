@@ -121,8 +121,8 @@ class CTISClient:
                         if attempt == self.max_retries:
                             raise CTISAPIError(f"Request failed after {attempt} attempts for {url}: {http_e}") from http_e
 
-                        sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
-                        logger.warning(f"HTTP {status or 'net'} error for {url}. Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...")
+                        sleep_time = min(30.0, (2 ** attempt) + random.uniform(0.1, 1.0))
+                        logger.warning(f"HTTP {status or 'net'} error for {url}: {http_e}. Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...")
                         time.sleep(sleep_time)
                         continue
 
@@ -147,7 +147,7 @@ class CTISClient:
                 if status in (429, 500, 502, 503, 504):
                     if attempt == self.max_retries:
                         raise CTISAPIError(f"HTTP {status} after {attempt} attempts for {url}") from http_err
-                    sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
+                    sleep_time = min(30.0, (2 ** attempt) + random.uniform(0.1, 1.0))
                     logger.warning(f"HTTP {status} for {url}. Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...")
                     time.sleep(sleep_time)
                 else:
@@ -156,8 +156,8 @@ class CTISClient:
             except (urllib.error.URLError, TimeoutError, OSError) as net_err:
                 if attempt == self.max_retries:
                     raise CTISAPIError(f"Network error after {attempt} attempts for {url}: {net_err}") from net_err
-                sleep_time = (2 ** attempt) + random.uniform(0.1, 1.0)
-                logger.warning(f"Network error for {url}: {net_err}. Retrying in {sleep_time:.2f}s...")
+                sleep_time = min(30.0, (2 ** attempt) + random.uniform(0.1, 1.0))
+                logger.warning(f"Network error for {url}: {net_err}. Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...")
                 time.sleep(sleep_time)
 
         raise CTISAPIError(f"Failed request to {url} after {self.max_retries} attempts.")

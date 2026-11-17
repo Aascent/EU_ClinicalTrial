@@ -7,6 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: eu_clinical_trial_pipeline
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - ./eu_clinical_trial/.env
     environment:
@@ -30,6 +33,9 @@ services:
       dockerfile: Dockerfile
     container_name: anz_clinical_trial_pipeline
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - ./anz_clinical_trial/.env
     environment:
