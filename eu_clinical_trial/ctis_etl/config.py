@@ -98,8 +98,9 @@ STATE_BACKEND = os.getenv("STATE_BACKEND", "dynamodb").lower()  # 'dynamodb', 's
 DOWNLOAD_DOCUMENTS = os.getenv("DOWNLOAD_DOCUMENTS", "true").lower() in ("true", "1", "yes")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
-DASHBOARD_EXPIRES_DAYS = int(os.getenv("DASHBOARD_EXPIRES_DAYS", "365"))
-DASHBOARD_EXPIRES_SECONDS = DASHBOARD_EXPIRES_DAYS * 86400
+DASHBOARD_EXPIRES_DAYS = int(os.getenv("DASHBOARD_EXPIRES_DAYS", "7"))
+# AWS SigV4 strictly limits pre-signed URLs to a maximum of 7 days (604,800 seconds)
+DASHBOARD_EXPIRES_SECONDS = min(DASHBOARD_EXPIRES_DAYS * 86400, 7 * 86400)
 
 # Production Resilience & Network Constants
 CONNECT_TIMEOUT = float(os.getenv("CONNECT_TIMEOUT", "10.0"))

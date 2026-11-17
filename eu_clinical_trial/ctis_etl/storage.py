@@ -1547,7 +1547,9 @@ def publish_pipeline_status_report(
     from ctis_etl import database
 
     if expires_in_seconds is None:
-        expires_in_seconds = getattr(config, "DASHBOARD_EXPIRES_SECONDS", 365 * 86400)
+        expires_in_seconds = getattr(config, "DASHBOARD_EXPIRES_SECONDS", 7 * 86400)
+    # AWS SigV4 strictly requires expiration to be <= 7 days (604,800 seconds)
+    expires_in_seconds = min(expires_in_seconds, 7 * 86400)
 
     if report_data is None:
         report_data = database.generate_pipeline_summary_report()
