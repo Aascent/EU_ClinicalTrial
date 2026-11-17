@@ -79,8 +79,15 @@ def _xml_to_dict(xml_content: str) -> Dict[str, Any]:
         return {"raw_text": xml_content}
 
 
-def save_raw_endpoint_payload(api_name: str, identifier: str, raw_content: str) -> Path:
-    """Saves raw untouched API XML response and a companion JSON file together in Bronze."""
+def save_raw_endpoint_payload(api_name: str, identifier: str, raw_content: str) -> Optional[Path]:
+    """Saves raw untouched API XML response and a companion JSON file together in Bronze only if valid."""
+    from anz_etl.parser import is_valid_trial_payload
+
+    is_valid, reason, _ = is_valid_trial_payload(raw_content)
+    if not is_valid:
+        logger.warning(f"Validation rejected raw payload '{api_name}' for {identifier}: {reason}. Skipping file creation.")
+        return None
+
     safe_id = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in identifier) or "payload"
     
     # Primary storage: Bronze layer grouped by trial identifier
@@ -127,11 +134,18 @@ def save_raw_endpoint_payload(api_name: str, identifier: str, raw_content: str) 
         return json_path
     except Exception as e:
         logger.error(f"Failed saving raw endpoint payload {api_name}/{safe_id}: {e}")
-        raise
+        return None
 
 
 def save_bronze_record(actrn: str, raw_content: str, is_xml: bool = True) -> bool:
-    """Saves raw XML and companion JSON together in the Bronze layer."""
+    """Saves raw XML and companion JSON together in the Bronze layer only if valid."""
+    from anz_etl.parser import is_valid_trial_payload
+
+    is_valid, reason, _ = is_valid_trial_payload(raw_content)
+    if not is_valid:
+        logger.warning(f"Validation rejected Bronze record for {actrn}: {reason}. Skipping file creation.")
+        return False
+
     bronze_dir = config.BRONZE_DIR / actrn
     bronze_dir.mkdir(parents=True, exist_ok=True)
 
@@ -179,7 +193,16 @@ def save_bronze_record(actrn: str, raw_content: str, is_xml: bool = True) -> boo
 
 
 def save_silver_records(actrn: str, domain_payloads: Dict[str, Dict[str, Any]]) -> bool:
-    """Saves parsed domain payloads in the Silver layer and data/{actrn} directory."""
+    """Saves parsed domain payloads in the Silver layer only if valid."""
+    if not domain_payloads:
+        logger.warning(f"Validation failed for {actrn}: Empty domain payloads. Skipping Silver record creation.")
+        return False
+
+    meta = domain_payloads.get("meta_data", {})
+    if not meta.get("public_title") and not meta.get("scientific_title"):
+        logger.warning(f"Validation failed for {actrn}: Missing public/scientific title. Skipping Silver record creation.")
+        return False
+
     success = True
     for domain_name, data in domain_payloads.items():
         filename = f"{domain_name}.json"

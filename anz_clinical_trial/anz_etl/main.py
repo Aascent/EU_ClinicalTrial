@@ -34,10 +34,9 @@ from anz_etl.database import (
     record_trial,
     update_trial_status,
 )
-from anz_etl.parser import parse_anzctr_trial
+from anz_etl.parser import is_valid_trial_payload, parse_anzctr_trial
 from anz_etl.storage import (
     publish_status_report,
-    quarantine_record,
     save_bronze_record,
     save_raw_endpoint_payload,
     save_silver_records,
@@ -80,37 +79,59 @@ logger = logging.getLogger("anz_etl.main")
 
 
 def process_single_trial(actrn: str, raw_xml: Optional[str] = None) -> bool:
-    """Retrieves, stores in Bronze (XML+JSON), parses into Silver domains, and updates state DB."""
+    """Retrieves, validates, stores in Bronze, parses into Silver, and updates state DB.
+
+    If validation fails or an error is returned, skips completely without creating files or error records.
+    """
     if _shutdown_event.is_set():
         logger.info(f"Skipping {actrn} due to active shutdown signal.")
         return False
 
-    mark_processing(actrn)
     logger.info(f"Processing trial: {actrn}")
 
     client = AnzctrClient()
     if not raw_xml:
-        raw_xml = client.fetch_raw_detailv2(actrn)
+        try:
+            raw_xml = client.fetch_raw_detailv2(actrn)
+        except Exception as e:
+            logger.warning(f"Network or request error fetching {actrn}: {e}. Skipping record creation.")
+            return False
 
     if not raw_xml:
-        logger.warning(f"No trial data available for {actrn}")
-        update_trial_status(actrn, "FAILED", error_message="No trial XML retrieved from endpoint")
+        logger.warning(f"No trial data available for {actrn}. Skipping record creation.")
         return False
 
-    # Save both raw XML and parsed companion JSON in the Bronze layer
-    save_bronze_record(actrn, raw_xml, is_xml=True)
+    # Validate trial payload BEFORE creating any files or DB records
+    is_valid, reason, _ = is_valid_trial_payload(raw_xml)
+    if not is_valid:
+        logger.warning(f"Validation rejected trial {actrn}: {reason}. Skipping without creating record or error record.")
+        return False
 
     try:
         domains = parse_anzctr_trial(raw_xml, actrn)
-        save_silver_records(actrn, domains)
-        update_trial_status(actrn, "SUCCESS")
-        logger.info(f"Successfully processed {actrn}")
-        return True
     except Exception as e:
-        logger.error(f"Error parsing trial {actrn}: {e}")
-        quarantine_record(actrn, raw_xml, str(e))
-        update_trial_status(actrn, "FAILED", error_message=str(e))
+        logger.warning(f"Validation/parsing failed for {actrn}: {e}. Skipping without creating record or error record.")
         return False
+
+    # Only write Bronze and Silver if payload is 100% valid
+    saved_bronze = save_bronze_record(actrn, raw_xml, is_xml=True)
+    if not saved_bronze:
+        return False
+
+    save_silver_records(actrn, domains)
+
+    # Only record successful trials in state database
+    title = domains.get("meta_data", {}).get("public_title") or f"Trial {actrn}"
+    reg_date = domains.get("meta_data", {}).get("registration_date") or ""
+    record_trial(
+        actrn=actrn,
+        title=title,
+        registration_date=reg_date,
+        sync_status="SUCCESS",
+    )
+    update_trial_status(actrn, "SUCCESS")
+    logger.info(f"Successfully processed {actrn}")
+    return True
 
 
 def run_check() -> int:
@@ -219,24 +240,24 @@ def run_collect_raw(actrn: Optional[str] = None, keyword: Optional[str] = None) 
         )
         print(f" [{idx}/5] {api_name:<14}: {size_bytes:>7,} bytes -> {saved_path.name}")
 
-    # Also save Bronze record for target_actrn
+    # Also save Bronze record for target_actrn only if valid
     main_raw = raw_payloads.get("detailv2") or raw_payloads.get("detail") or raw_payloads.get("result") or ""
     if main_raw:
-        save_bronze_record(target_actrn, main_raw, is_xml=True)
-        try:
-            domains = parse_anzctr_trial(main_raw, target_actrn)
-            save_silver_records(target_actrn, domains)
-        except Exception as e:
-            logger.info(f"Silver domain extraction skipped: {e}")
+        is_valid, reason, _ = is_valid_trial_payload(main_raw)
+        if is_valid:
+            save_bronze_record(target_actrn, main_raw, is_xml=True)
+            try:
+                domains = parse_anzctr_trial(main_raw, target_actrn)
+                save_silver_records(target_actrn, domains)
+                title = domains.get("meta_data", {}).get("public_title") or f"Trial {target_actrn}"
+                record_trial(actrn=target_actrn, title=title, sync_status="SUCCESS")
+            except Exception as e:
+                logger.info(f"Silver domain extraction skipped: {e}")
+        else:
+            logger.warning(f"Raw payload for {target_actrn} is invalid: {reason}. Skipping record creation.")
 
-    # Record primary trial and sample studies in tracker DB and DynamoDB
+    # Refresh status report without inserting dummy placeholder records
     init_db()
-    for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
-        record_trial(
-            actrn=s_actrn,
-            title=s_title,
-            sync_status="SUCCESS",
-        )
     stats = get_stats()
     report_res = publish_status_report(stats)
 
@@ -270,17 +291,8 @@ def run_pipeline(
     except Exception as e:
         logger.warning(f"Search endpoint query skipped or failed: {e}")
 
-    # Ensure all trials in catalog are tracked in state database
-    for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
-        if not is_trial_tracked(s_actrn):
-            record_trial(actrn=s_actrn, title=s_title, sync_status="PENDING")
-
-    # In single/test mode, ensure representative trials are tracked
+    # Query pending trials to process
     pending = get_pending_trials(limit=50)
-    if not pending and mode in ("historical", "incremental", "raw"):
-        for s_actrn, s_title in DEFAULT_SAMPLE_TRIALS:
-            record_trial(actrn=s_actrn, title=s_title, sync_status="PENDING")
-        pending = [t[0] for t in DEFAULT_SAMPLE_TRIALS]
 
     logger.info(f"Found {len(pending)} pending trials to process.")
 

@@ -69,24 +69,70 @@ def _get_field(d: Dict[str, Any], *candidate_keys: str, default: Any = "") -> An
     return default
 
 
+def is_valid_trial_payload(raw_data: Any) -> tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+    """Validates if raw data contains a genuine clinical trial record without errors or SOAP faults.
+
+    Returns:
+        (is_valid, error_reason, trial_dict)
+    """
+    if not raw_data:
+        return False, "Payload is empty or None", None
+
+    trial_node: Dict[str, Any] = {}
+
+    if isinstance(raw_data, str):
+        s = raw_data.strip()
+        if not s:
+            return False, "Payload string is empty or whitespace", None
+
+        s_lower = s.lower()
+        # Check for SOAP Faults and exceptions in text
+        if "<soap:fault" in s_lower or "<faultcode" in s_lower:
+            return False, "Payload is a SOAP Fault XML", None
+        if "user unauthorised" in s_lower or "user unauthorized" in s_lower or "httpresponseexception" in s_lower:
+            return False, "Payload indicates unauthorized or server exception", None
+        if "managed challenge" in s_lower or "under attack" in s_lower or "<title>403" in s_lower:
+            return False, "Payload is a WAF/firewall challenge or 403 page", None
+        if "invalidoperationexception" in s_lower:
+            return False, "Payload is an InvalidOperationException", None
+
+        try:
+            parsed = _xml_to_dict(s)
+            trial_node = _extract_trial_node(parsed)
+        except Exception as e:
+            return False, f"Failed parsing XML payload: {e}", None
+
+    elif isinstance(raw_data, dict):
+        if "raw_content" in raw_data and isinstance(raw_data["raw_content"], str):
+            return is_valid_trial_payload(raw_data["raw_content"])
+        try:
+            trial_node = _extract_trial_node(raw_data)
+        except Exception as e:
+            return False, f"Failed extracting trial node: {e}", None
+    else:
+        return False, f"Unsupported payload type: {type(raw_data).__name__}", None
+
+    if not trial_node:
+        return False, "No clinical trial node found in payload", None
+
+    # Verify at least one essential title field is present and non-empty
+    pub_title = _get_field(trial_node, "publictitle", "public_title", "studytitle", "title")
+    sci_title = _get_field(trial_node, "scientifictitle", "scientific_title")
+
+    if not pub_title and not sci_title:
+        return False, "Trial has neither public_title nor scientific_title (empty trial data)", None
+
+    return True, None, trial_node
+
+
 def parse_anzctr_trial(raw_data: Any, actrn: str) -> Dict[str, Dict[str, Any]]:
     """Splits raw trial dictionary, XML string, or wrapper payload into 6 standardized domain payloads.
 
-    Detects upstream SOAP Faults and raises ValueError to prevent corrupt ingestion.
+    Validates trial content and raises ValueError if invalid or contains an error.
     """
-    trial_dict: Dict[str, Any] = {}
-
-    if isinstance(raw_data, str):
-        parsed = _xml_to_dict(raw_data)
-        trial_dict = _extract_trial_node(parsed)
-    elif isinstance(raw_data, dict):
-        if "raw_content" in raw_data and isinstance(raw_data["raw_content"], str):
-            parsed = _xml_to_dict(raw_data["raw_content"])
-            trial_dict = _extract_trial_node(parsed)
-        else:
-            trial_dict = _extract_trial_node(raw_data)
-    else:
-        raise ValueError(f"Unsupported raw data type for parsing: {type(raw_data).__name__}")
+    is_valid, reason, trial_dict = is_valid_trial_payload(raw_data)
+    if not is_valid or trial_dict is None:
+        raise ValueError(f"Invalid trial payload for {actrn}: {reason}")
 
     # Domain 1: meta_data
     meta_data = {

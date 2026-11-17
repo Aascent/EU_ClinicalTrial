@@ -105,6 +105,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LOG_FILE_MAX_BYTES = int(os.getenv("LOG_FILE_MAX_BYTES", str(10 * 1024 * 1024)))
 LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 STATUS_JSON_PATH = DATA_DIR / "pipeline_status.json"
+STATUS_HTML_PATH = DATA_DIR / "pipeline_status.html"
 PORT = int(os.getenv("PORT", "8081"))
 CRON_SCHEDULE = os.getenv("CRON_SCHEDULE", "0 3 * * *")
 RUN_ON_STARTUP = os.getenv("RUN_ON_STARTUP", "true").lower() in ("true", "1", "yes")
