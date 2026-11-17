@@ -26,6 +26,7 @@ The pipeline ingests raw trial dossiers into a dual **Bronze Layer** (storing bo
   - [5.1 Bronze Tier (Dual Raw XML & JSON)](#51-bronze-tier-dual-raw-xml--json)
   - [5.2 Silver Tier (6 Standard Domain Entities)](#52-silver-tier-6-standard-domain-entities)
   - [5.3 Quarantine Tier (Dead-Letter Handling)](#53-quarantine-tier-dead-letter-handling)
+  - [5.4 Data Collection Scope & Volume Metrics (How Much Data We Collect)](#54-data-collection-scope--volume-metrics-how-much-data-we-collect)
 - [6. State Management & Database Design](#6-state-management--database-design)
   - [6.1 SQLite Engine with WAL Mode](#61-sqlite-engine-with-wal-mode)
   - [6.2 AWS DynamoDB Engine](#62-aws-dynamodb-engine)
@@ -35,7 +36,7 @@ The pipeline ingests raw trial dossiers into a dual **Bronze Layer** (storing bo
   - [7.2 Command Examples](#72-command-examples)
 - [8. Docker Deployment & Automated Scheduling](#8-docker-deployment--automated-scheduling)
   - [8.1 Container Architecture](#81-container-architecture)
-  - [8.2 Automated Cron Scheduling](#82-automated-cron-scheduling)
+  - [8.2 Automated Cron Scheduling (Execution Frequency)](#82-automated-cron-scheduling-execution-frequency)
   - [8.3 Web Dashboard & Live Monitoring](#83-web-dashboard--live-monitoring)
 - [9. Configuration & Environment Variables](#9-configuration--environment-variables)
 - [10. Standalone Testing Utility (`test_raw_apis.py`)](#10-standalone-testing-utility-test_raw_apispy)
@@ -256,6 +257,42 @@ Derived from the raw trial dossier and normalized by [`anz_etl/parser.py`](file:
 
 Any payload that fails validation or schema extraction is routed to `./quarantine/{actrn}_{timestamp}.json` alongside the complete error trace, preventing pipeline stalls.
 
+### 5.4 Data Collection Scope & Volume Metrics (How Much Data We Collect)
+
+The pipeline collects both raw, unadulterated regulatory messages and structured, normalized domain entities for each clinical trial.
+
+#### 1. Files Collected Per Trial (8 Files Total)
+
+For every clinical trial dossier processed, the pipeline persists **8 dedicated files** across the Bronze and Silver tiers:
+
+| Tier | Filename / Domain | Data Collected | Typical File Size |
+| :--- | :--- | :--- | :--- |
+| **Bronze** | `raw.xml` | Authentic, unmanipulated SOAP XML response directly from ANZCTR ASMX services | ~40 KB – 120 KB |
+| **Bronze** | `raw.json` | Companion JSON representation preserving the complete XML object hierarchy | ~50 KB – 140 KB |
+| **Silver** | `meta_data.json` | ACTRN, trial identifiers, public/scientific titles, registration date, ethics approval | ~2 KB – 5 KB |
+| **Silver** | `summary.json` | Brief summary, primary sponsor, target sample size, health conditions, interventions | ~3 KB – 8 KB |
+| **Silver** | `full_trial_information.json` | Detailed study design, phase, inclusion/exclusion eligibility criteria, primary & secondary outcomes | ~15 KB – 50 KB |
+| **Silver** | `trial_documents.json` | Protocol citations, registry review URLs, published papers, and documentation links | ~2 KB – 5 KB |
+| **Silver** | `trial_results.json` | Result summaries, completion indicators, published outcome citations, and dates | ~2 KB – 5 KB |
+| **Silver** | `locations_and_contact_points.json` | Study sites, participating countries, Principal Investigators, and public contact points | ~3 KB – 10 KB |
+| **Raw Mode** | `Search.*`, `detail.*`, etc. | Endpoint-specific captures across all 5 initial ASMX operations (in `data/raw/`) | ~30 KB – 100 KB each |
+
+#### 2. Storage Footprint Per Trial
+
+* **Average Storage Per Trial Dossier:** ~120 KB – 250 KB (including raw XML, companion JSON, and all 6 normalized Silver domain JSONs).
+* **Storage Dual-Writing:** Every file is written to local disk (`./data/bronze/` and `./data/silver/`) and optionally synchronized to Amazon S3 (`s3://<bucket>/anzctr/`).
+
+#### 3. Total Data Volume Collected
+
+| Metric / Catalog Scope | Current Production Catalog | Full ANZCTR Registry Scope (Projected) |
+| :--- | :--- | :--- |
+| **Clinical Trials Tracked** | **25 trials** (Representative Australian trial catalog) | **~40,000+ trials** (Entire historical registry) |
+| **Total Files Generated** | **~200 files** (8 files × 25 trials) | **~320,000+ files** |
+| **Local Disk Storage Footprint** | **~5.2 MB** | **~6.0 GB – 10.0 GB** |
+| **Amazon S3 Cloud Replicas** | **~5.2 MB** (`s3://aascent-mindgram/anzctr/`) | **~6.0 GB – 10.0 GB** |
+| **Database Tracking Records** | **25 items** in SQLite (`tracker.db`) & DynamoDB (`ANZ_Clinical`) | **~40,000+ items** |
+| **Monitoring Artifacts** | `pipeline_status.json` (~10 KB) & `index.html` (~55 KB) | Auto-refreshed on every pipeline run |
+
 ---
 
 ## 6. State Management & Database Design
@@ -363,19 +400,44 @@ The container is packaged using **`python:3.11-slim`** and includes:
 - **Python HTTP Server**: Exposes the live web dashboard on port `8081`.
 - **Log Streamer**: Tails pipeline and cron logs to Docker `stdout` for centralized observability.
 
-### 8.2 Automated Cron Scheduling
+### 8.2 Automated Cron Scheduling (Execution Frequency)
 
-The bundled crontab runs:
+The container executes automated pipeline synchronization and reporting jobs in the background using the system `cron` daemon.
+
+#### 1. Execution Schedule & Frequency Breakdown
+
+The bundled crontab runs **102 times per day** (~714 times per week) across 4 dedicated automation schedules:
+
+| Schedule (Cron Expression) | Frequency | Daily Executions | Target Command Mode | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `*/15 * * * *` | **Every 15 minutes** | **96 times / day** | `--mode incremental` | Near-real-time synchronization checking for newly updated or registered clinical trials in the last 7 days |
+| `0 */6 * * *` | **Every 6 hours** (00:00, 06:00, 12:00, 18:00 UTC) | **4 times / day** | `--mode new` | Dedicated discovery pass identifying brand-new trial registrations |
+| `0 3 * * *` | **Daily at 03:00 AM UTC** | **1 time / day** | `--mode incremental` | Comprehensive daily deep sync ensuring full catalog alignment and metadata integrity |
+| `0 4 * * *` | **Daily at 04:00 AM UTC** | **1 time / day** | `--mode report` | Dashboard refresh generating updated `index.html` and `pipeline_status.json` and publishing to S3 |
+| **Total Daily Activity** | — | **102 runs / day** | Full Lifecycle | Uninterrupted 24/7 autonomous data extraction, normalization, and cloud sync |
+
+#### 2. Bundled Crontab Specification (`crontab`)
+
 ```cron
-# Process 1: Check for new trials every 6 hours
-0 */6 * * * root /bin/bash -c ". /app/env.sh && python -m anz_etl.main --mode new >> /app/logs/cron.log 2>&1"
+# Process 1: Incremental sync check every 15 minutes (96 runs/day)
+*/15 * * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode incremental >> /app/logs/cron.log 2>&1"
 
-# Process 2: Check for updates daily at 03:00 AM UTC
-0 3 * * * root /bin/bash -c ". /app/env.sh && python -m anz_etl.main --mode updates >> /app/logs/cron.log 2>&1"
+# Process 2: Check for brand new trials every 6 hours (4 runs/day)
+0 */6 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode new >> /app/logs/cron.log 2>&1"
 
-# Process 3: Refresh web dashboard daily at 04:00 AM UTC
-0 4 * * * root /bin/bash -c ". /app/env.sh && python -m anz_etl.main --mode report >> /app/logs/cron.log 2>&1"
+# Process 3: Full daily incremental sync at 03:00 AM UTC (1 run/day)
+0 3 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode incremental >> /app/logs/cron.log 2>&1"
+
+# Process 4: Refresh web dashboard and S3 metrics daily at 04:00 AM UTC (1 run/day)
+0 4 * * * root /bin/bash -c ". /app/env.sh && cd /app && python -m anz_etl.main --mode report >> /app/logs/cron.log 2>&1"
 ```
+
+#### 3. Customizing the Cron Schedule
+
+To adjust the primary sync frequency without rebuilding the image:
+* In `anz_clinical_trial/.env`, update: `CRON_SCHEDULE="0 */2 * * *"` (runs every 2 hours).
+* In root `docker-compose.yml`, update: `ANZ_CRON_SCHEDULE="0 */4 * * *"` (runs every 4 hours).
+* The container entrypoint automatically detects `CRON_SCHEDULE` on startup, writes the updated rule to `/etc/cron.d/anz-cron`, and restarts the cron daemon. All executions safely source runtime environment variables from `/app/env.sh` and stream logs to `/app/logs/cron.log`.
 
 ### 8.3 Web Dashboard & Live Monitoring
 
